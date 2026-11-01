@@ -1,35 +1,357 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="hi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#080d27">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RA Rohan Raj Chat</title>
+
 <style>
-:root{color-scheme:dark;--bg:#080d27;--panel:#111a3a;--blue:#087cff;--line:#52628e}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:#fff;font-family:Arial,sans-serif}
-header{padding:18px 16px;background:#111b42;text-align:center;border-bottom:1px solid #263b78}
-.logo{width:84px;height:84px;object-fit:contain;border-radius:18px;margin:auto;display:block}
-h1{margin:8px 0 4px;font-size:22px}
-small,.muted{color:#aebde9}
-main{max-width:520px;margin:auto;padding:16px}
-.card{background:var(--panel);padding:18px;border-radius:18px;margin:16px 0}
-input{width:100%;padding:13px;margin:7px 0;background:var(--bg);color:white;border:1px solid var(--line);border-radius:10px;font-size:16px}
-button{width:100%;padding:13px;margin:7px 0;border:0;border-radius:10px;background:var(--blue);color:white;font-size:16px;font-weight:bold;cursor:pointer}
-button:disabled{opacity:.55}
+body{
+  margin:0;
+  background:#080d27;
+  color:white;
+  font-family:Arial,sans-serif
+}
+header{
+  padding:20px;
+  text-align:center;
+  background:#111b42;
+  border-bottom:1px solid #263b78
+}
+.logo{
+  font-size:38px;
+  font-weight:900;
+  color:#12cfff
+}
+h1{margin:5px;font-size:23px}
+main{max-width:480px;margin:auto;padding:16px}
+.card{
+  background:#111a3a;
+  padding:18px;
+  border-radius:16px;
+  margin-top:16px
+}
+input{
+  width:100%;
+  padding:14px;
+  margin:8px 0;
+  background:#080d27;
+  color:white;
+  border:1px solid #52628e;
+  border-radius:10px
+}
+button{
+  width:100%;
+  padding:14px;
+  margin:7px 0;
+  border:0;
+  border-radius:10px;
+  background:#087cff;
+  color:white;
+  font-size:16px;
+  font-weight:bold
+}
 .google{background:white;color:#222}
 .secondary{background:#27365e}
+small{color:#aebde9}
 #chatArea{display:none}
-#messages{height:300px;overflow:auto;background:var(--bg);padding:12px;border-radius:12px}
-.msg{background:#193e83;padding:10px;margin:8px 0;border-radius:12px;overflow-wrap:anywhere}
-.msg.mine{background:#174c50}
+#messages{
+  height:300px;
+  overflow:auto;
+  background:#080d27;
+  padding:12px;
+  border-radius:12px
+}
+.msg{
+  background:#193e83;
+  padding:10px;
+  margin:8px 0;
+  border-radius:12px;
+  overflow-wrap:anywhere
+}
 #status,#friendStatus{overflow-wrap:anywhere}
-.row{display:flex;gap:8px;align-items:center}
-.row input{flex:1;min-width:0}
-.row button{width:auto;min-width:90px}
-@media(max-width:420px){main{padding:10px}.card{padding:14px}}
 </style>
 </head>
+
 <body>
 <header>
+  <div class="logo">RA</div>
+  <h1>ROHAN RAJ CHAT</h1>
+  <small>Chat • Voice Call • Video Call</small>
+</header>
+
+<main>
+  <div id="authArea" class="card">
+    <h2>Welcome to RA Chat</h2>
+    <p>Signup या Login करो</p>
+
+    <input id="name" placeholder="अपना नाम">
+    <input id="email" type="email" placeholder="Email Address">
+    <input id="password" type="password" placeholder="Password">
+
+    <button onclick="signup()">Create Account</button>
+    <button class="secondary" onclick="login()">Login</button>
+    <button class="google" onclick="googleLogin()">
+      Google से Login
+    </button>
+
+    <p id="status"></p>
+  </div>
+
+  <div id="chatArea">
+    <div class="card">
+      <h2 id="welcome">Welcome!</h2>
+      <button class="secondary" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="card">
+      <h3>दोस्त से Chat शुरू करो</h3>
+      <input id="friendEmail" type="email"
+             placeholder="दोस्त का Email">
+      <button onclick="openFriend()">Find Friend</button>
+      <p id="friendStatus"></p>
+    </div>
+
+    <div class="card">
+      <h3 id="chatTitle">Private Chat</h3>
+      <div id="messages"></div>
+      <input id="message" placeholder="अपना मैसेज लिखें">
+      <button onclick="sendMessage()">Send Message</button>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import {initializeApp} from
+"https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
+
+import {
+  getAuth,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut
+} from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDmsIygS5gwvvgZn2rDfUToI1gTlM-dmmM",
+  authDomain: "rohan-raj-chat-85680.firebaseapp.com",
+  projectId: "rohan-raj-chat-85680",
+  storageBucket: "rohan-raj-chat-85680.firebasestorage.app",
+  messagingSenderId: "565941235946",
+  appId: "1:565941235946:web:295176ef9255e085006793",
+  measurementId: "G-Z83ZN0SQK4"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let currentChat = null;
+let unsubscribe = null;
+
+const $ = id => document.getElementById(id);
+const status = $("status");
+
+function showError(element, error) {
+  element.textContent = error.message || String(error);
+}
+
+window.signup = async () => {
+  try {
+    const name = $("name").value.trim();
+    const email = $("email").value.trim().toLowerCase();
+    const password = $("password").value;
+
+    if (!name) throw Error("अपना नाम लिखो");
+    if (!email) throw Error("अपना Email लिखो");
+    if (password.length < 6)
+      throw Error("Password कम से कम 6 अक्षर का होना चाहिए");
+
+    const result = await createUserWithEmailAndPassword(
+      auth, email, password
+    );
+
+    await setDoc(doc(db, "users", result.user.uid), {
+      uid: result.user.uid,
+      name,
+      email
+    });
+  } catch (e) {
+    showError(status, e);
+  }
+};
+
+window.login = async () => {
+  try {
+    const email = $("email").value.trim().toLowerCase();
+    const password = $("password").value;
+
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (e) {
+    showError(status, e);
+  }
+};
+
+window.googleLogin = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    showError(status, e);
+  }
+};
+
+window.logout = async () => {
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, async user => {
+  currentUser = user;
+  status.textContent = "";
+
+  if (!user) {
+    $("authArea").style.display = "block";
+    $("chatArea").style.display = "none";
+
+    if (unsubscribe) unsubscribe();
+    unsubscribe = null;
+    currentChat = null;
+    return;
+  }
+
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
+
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      uid: user.uid,
+      name: user.displayName || user.email.split("@")[0],
+      email: user.email.toLowerCase()
+    });
+  }
+
+  $("authArea").style.display = "none";
+  $("chatArea").style.display = "block";
+  $("welcome").textContent =
+    "Welcome, " + (user.displayName || user.email);
+});
+
+window.openFriend = async () => {
+  try {
+    const email = $("friendEmail").value.trim().toLowerCase();
+
+    if (!email) throw Error("दोस्त का Email लिखो");
+    if (email === currentUser.email.toLowerCase())
+      throw Error("अपना Email मत डालो");
+
+    const q = query(
+      collection(db, "users"),
+      where("email", "==", email)
+    );
+
+    const result = await getDocs(q);
+
+    if (result.empty)
+      throw Error("यह दोस्त अभी Signup नहीं हुआ है");
+
+    const friend = result.docs[0].data();
+    const participants =
+      [currentUser.uid, friend.uid].sort();
+
+    const chatId = participants.join("_");
+
+    await setDoc(doc(db, "chats", chatId), {
+      participants,
+      updatedAt: serverTimestamp()
+    }, {merge: true});
+
+    currentChat = chatId;
+
+    $("chatTitle").textContent = "Chat with " + friend.name;
+    $("friendStatus").textContent = "दोस्त मिल गया!";
+
+    listenMessages();
+  } catch (e) {
+    showError($("friendStatus"), e);
+  }
+};
+
+function listenMessages() {
+  if (unsubscribe) unsubscribe();
+
+  const messagesRef =
+    collection(db, "chats", currentChat, "messages");
+
+  const q = query(messagesRef, orderBy("createdAt", "asc"));
+
+  unsubscribe = onSnapshot(q, snapshot => {
+    const box = $("messages");
+    box.replaceChildren();
+
+    snapshot.forEach(item => {
+      const m = item.data();
+      const div = document.createElement("div");
+      div.className = "msg";
+
+      const label = document.createElement("small");
+      label.textContent =
+        m.senderId === currentUser.uid ? "You" : "Friend";
+
+      const content = document.createElement("div");
+      content.textContent = m.text;
+
+      div.append(label, content);
+      box.appendChild(div);
+    });
+
+    box.scrollTop = box.scrollHeight;
+  }, error => {
+    showError($("friendStatus"), error);
+  });
+}
+
+window.sendMessage = async () => {
+  try {
+    const input = $("message");
+    const value = input.value.trim();
+
+    if (!currentChat) throw Error("पहले दोस्त चुनो");
+    if (!value) return;
+
+    await addDoc(
+      collection(db, "chats", currentChat, "messages"),
+      {
+        text: value,
+        senderId: currentUser.uid,
+        createdAt: serverTimestamp()
+      }
+    );
+
+    input.value = "";
+  } catch (e) {
+    alert(e.message);
+  }
+};
+</script>
+</body>
+</html>
