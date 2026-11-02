@@ -1,357 +1,48 @@
-<!DOCTYPE html>
-<html lang="hi">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>RA Rohan Raj Chat</title>
-
+<!doctype html>
+<html lang="hi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10142b"><title>Rohan Raj Chat</title>
 <style>
-*{box-sizing:border-box}
-body{
-  margin:0;
-  background:#080d27;
-  color:white;
-  font-family:Arial,sans-serif
-}
-header{
-  padding:20px;
-  text-align:center;
-  background:#111b42;
-  border-bottom:1px solid #263b78
-}
-.logo{
-  font-size:38px;
-  font-weight:900;
-  color:#12cfff
-}
-h1{margin:5px;font-size:23px}
-main{max-width:480px;margin:auto;padding:16px}
-.card{
-  background:#111a3a;
-  padding:18px;
-  border-radius:16px;
-  margin-top:16px
-}
-input{
-  width:100%;
-  padding:14px;
-  margin:8px 0;
-  background:#080d27;
-  color:white;
-  border:1px solid #52628e;
-  border-radius:10px
-}
-button{
-  width:100%;
-  padding:14px;
-  margin:7px 0;
-  border:0;
-  border-radius:10px;
-  background:#087cff;
-  color:white;
-  font-size:16px;
-  font-weight:bold
-}
-.google{background:white;color:#222}
-.secondary{background:#27365e}
-small{color:#aebde9}
-#chatArea{display:none}
-#messages{
-  height:300px;
-  overflow:auto;
-  background:#080d27;
-  padding:12px;
-  border-radius:12px
-}
-.msg{
-  background:#193e83;
-  padding:10px;
-  margin:8px 0;
-  border-radius:12px;
-  overflow-wrap:anywhere
-}
-#status,#friendStatus{overflow-wrap:anywhere}
-</style>
-</head>
-
-<body>
-<header>
-  <div class="logo">RA</div>
-  <h1>ROHAN RAJ CHAT</h1>
-  <small>Chat • Voice Call • Video Call</small>
-</header>
-
+*{box-sizing:border-box}body{margin:0;background:#0b1020;color:#f4f5ff;font:15px Arial}header{padding:16px;background:#141a35;display:flex;align-items:center;gap:12px;border-bottom:1px solid #30385f}.logo{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#6d5dfc,#b34dff);display:grid;place-items:center;font-size:22px;font-weight:bold}h1{font-size:21px;margin:0}main{max-width:950px;margin:18px auto;padding:0 12px}.panel{background:#141a35;border:1px solid #30385f;border-radius:15px;padding:16px;margin-bottom:14px}h2{font-size:18px;margin:0 0 12px}.muted{color:#adb5d9;font-size:13px;line-height:1.5}input{width:100%;padding:12px;margin:6px 0 10px;border-radius:9px;border:1px solid #414b78;background:#0d1330;color:white}button{padding:11px 14px;margin:4px 3px 4px 0;border:0;border-radius:9px;background:#7665ff;color:white;font-weight:bold}.secondary{background:#30395f}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:120px}.hidden{display:none!important}.columns{display:grid;grid-template-columns:1fr 1.5fr;gap:14px}.user{padding:10px;border-bottom:1px solid #30385f;cursor:pointer}#messages{height:320px;overflow:auto;background:#0d1330;border-radius:10px;padding:10px;margin:10px 0}.msg{padding:9px 12px;margin:7px 0;border-radius:12px;max-width:85%;background:#293256;overflow-wrap:anywhere}.mine{margin-left:auto;background:#594bd0}.msg small{display:block;font-size:10px;margin-top:5px;color:#d1d4f1}#status{font-size:13px;color:#c4c9eb;margin:8px 0}@media(max-width:700px){.columns{grid-template-columns:1fr}#messages{height:270px}}
+</style></head><body>
+<header><div class="logo">RA</div><div><h1>Rohan Raj Chat</h1><span class="muted">Private messaging • Real-time chat</span></div></header>
 <main>
-  <div id="authArea" class="card">
-    <h2>Welcome to RA Chat</h2>
-    <p>Signup या Login करो</p>
-
-    <input id="name" placeholder="अपना नाम">
-    <input id="email" type="email" placeholder="Email Address">
-    <input id="password" type="password" placeholder="Password">
-
-    <button onclick="signup()">Create Account</button>
-    <button class="secondary" onclick="login()">Login</button>
-    <button class="google" onclick="googleLogin()">
-      Google से Login
-    </button>
-
-    <p id="status"></p>
-  </div>
-
-  <div id="chatArea">
-    <div class="card">
-      <h2 id="welcome">Welcome!</h2>
-      <button class="secondary" onclick="logout()">Logout</button>
-    </div>
-
-    <div class="card">
-      <h3>दोस्त से Chat शुरू करो</h3>
-      <input id="friendEmail" type="email"
-             placeholder="दोस्त का Email">
-      <button onclick="openFriend()">Find Friend</button>
-      <p id="friendStatus"></p>
-    </div>
-
-    <div class="card">
-      <h3 id="chatTitle">Private Chat</h3>
-      <div id="messages"></div>
-      <input id="message" placeholder="अपना मैसेज लिखें">
-      <button onclick="sendMessage()">Send Message</button>
-    </div>
-  </div>
-</main>
-
+<div id="auth" class="panel"><h2>Login / Sign up</h2><p class="muted">Google account se ya email-password se login karein.</p><button id="googleBtn">Continue with Google</button><hr style="border-color:#30385f">
+<input id="email" type="email" placeholder="Email address"><input id="password" type="password" placeholder="Password (minimum 6 characters)">
+<button id="signupBtn">Create account</button><button class="secondary" id="loginBtn">Login</button><div id="authStatus" class="muted"></div></div>
+<div id="app" class="hidden">
+<div class="panel"><div class="row"><div><h2 id="welcome">Welcome</h2><div id="myEmail" class="muted"></div></div><button class="secondary" id="logoutBtn">Logout</button></div>
+<div class="row"><div class="muted">Your name<input id="myName" placeholder="Apna naam"></div><div class="muted">Mobile number (OTP nahi aayega)<input id="myPhone" inputmode="tel" placeholder="10 digit mobile number"></div></div>
+<label class="muted"><input id="discoverable" type="checkbox" style="width:auto"> Mera naam aur mobile number se mujhe search kiya ja sake (optional)</label><br><button id="saveProfile">Save profile</button>
+<p class="muted">Mobile number verify nahi hoga. Galat number bhi enter ho sakta hai. Sirf apna number dein aur search permission apni marzi se on karein.</p></div>
+<div class="columns"><section class="panel"><h2>Friends dhoondhein</h2><input id="searchInput" placeholder="Naam ya mobile number"><button id="searchBtn">Search</button><div id="searchResults"></div><h2 style="margin-top:18px">Your chats</h2><div id="chatList"></div></section>
+<section class="panel"><h2 id="chatTitle">Chat select karein</h2><div id="messages"><span class="muted">Left side se friend select karein.</span></div><div class="row"><input id="messageInput" placeholder="Message likhein..." maxlength="2000"><button id="sendBtn">Send</button></div><p class="muted">Is version mein text chat hai. Voice/video calling abhi nahi hai.</p></section></div></div><div id="status"></div></main>
 <script type="module">
-import {initializeApp} from
-"https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
-
-import {
-  getAuth,
-  onAuthStateChanged,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut
-} from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
-
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDmsIygS5gwvvgZn2rDfUToI1gTlM-dmmM",
-  authDomain: "rohan-raj-chat-85680.firebaseapp.com",
-  projectId: "rohan-raj-chat-85680",
-  storageBucket: "rohan-raj-chat-85680.firebasestorage.app",
-  messagingSenderId: "565941235946",
-  appId: "1:565941235946:web:295176ef9255e085006793",
-  measurementId: "G-Z83ZN0SQK4"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-let currentUser = null;
-let currentChat = null;
-let unsubscribe = null;
-
-const $ = id => document.getElementById(id);
-const status = $("status");
-
-function showError(element, error) {
-  element.textContent = error.message || String(error);
-}
-
-window.signup = async () => {
-  try {
-    const name = $("name").value.trim();
-    const email = $("email").value.trim().toLowerCase();
-    const password = $("password").value;
-
-    if (!name) throw Error("अपना नाम लिखो");
-    if (!email) throw Error("अपना Email लिखो");
-    if (password.length < 6)
-      throw Error("Password कम से कम 6 अक्षर का होना चाहिए");
-
-    const result = await createUserWithEmailAndPassword(
-      auth, email, password
-    );
-
-    await setDoc(doc(db, "users", result.user.uid), {
-      uid: result.user.uid,
-      name,
-      email
-    });
-  } catch (e) {
-    showError(status, e);
-  }
-};
-
-window.login = async () => {
-  try {
-    const email = $("email").value.trim().toLowerCase();
-    const password = $("password").value;
-
-    await signInWithEmailAndPassword(auth, email, password);
-  } catch (e) {
-    showError(status, e);
-  }
-};
-
-window.googleLogin = async () => {
-  try {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
-  } catch (e) {
-    showError(status, e);
-  }
-};
-
-window.logout = async () => {
-  await signOut(auth);
-};
-
-onAuthStateChanged(auth, async user => {
-  currentUser = user;
-  status.textContent = "";
-
-  if (!user) {
-    $("authArea").style.display = "block";
-    $("chatArea").style.display = "none";
-
-    if (unsubscribe) unsubscribe();
-    unsubscribe = null;
-    currentChat = null;
-    return;
-  }
-
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
-
-  if (!snap.exists()) {
-    await setDoc(userRef, {
-      uid: user.uid,
-      name: user.displayName || user.email.split("@")[0],
-      email: user.email.toLowerCase()
-    });
-  }
-
-  $("authArea").style.display = "none";
-  $("chatArea").style.display = "block";
-  $("welcome").textContent =
-    "Welcome, " + (user.displayName || user.email);
-});
-
-window.openFriend = async () => {
-  try {
-    const email = $("friendEmail").value.trim().toLowerCase();
-
-    if (!email) throw Error("दोस्त का Email लिखो");
-    if (email === currentUser.email.toLowerCase())
-      throw Error("अपना Email मत डालो");
-
-    const q = query(
-      collection(db, "users"),
-      where("email", "==", email)
-    );
-
-    const result = await getDocs(q);
-
-    if (result.empty)
-      throw Error("यह दोस्त अभी Signup नहीं हुआ है");
-
-    const friend = result.docs[0].data();
-    const participants =
-      [currentUser.uid, friend.uid].sort();
-
-    const chatId = participants.join("_");
-
-    await setDoc(doc(db, "chats", chatId), {
-      participants,
-      updatedAt: serverTimestamp()
-    }, {merge: true});
-
-    currentChat = chatId;
-
-    $("chatTitle").textContent = "Chat with " + friend.name;
-    $("friendStatus").textContent = "दोस्त मिल गया!";
-
-    listenMessages();
-  } catch (e) {
-    showError($("friendStatus"), e);
-  }
-};
-
-function listenMessages() {
-  if (unsubscribe) unsubscribe();
-
-  const messagesRef =
-    collection(db, "chats", currentChat, "messages");
-
-  const q = query(messagesRef, orderBy("createdAt", "asc"));
-
-  unsubscribe = onSnapshot(q, snapshot => {
-    const box = $("messages");
-    box.replaceChildren();
-
-    snapshot.forEach(item => {
-      const m = item.data();
-      const div = document.createElement("div");
-      div.className = "msg";
-
-      const label = document.createElement("small");
-      label.textContent =
-        m.senderId === currentUser.uid ? "You" : "Friend";
-
-      const content = document.createElement("div");
-      content.textContent = m.text;
-
-      div.append(label, content);
-      box.appendChild(div);
-    });
-
-    box.scrollTop = box.scrollHeight;
-  }, error => {
-    showError($("friendStatus"), error);
-  });
-}
-
-window.sendMessage = async () => {
-  try {
-    const input = $("message");
-    const value = input.value.trim();
-
-    if (!currentChat) throw Error("पहले दोस्त चुनो");
-    if (!value) return;
-
-    await addDoc(
-      collection(db, "chats", currentChat, "messages"),
-      {
-        text: value,
-        senderId: currentUser.uid,
-        createdAt: serverTimestamp()
-      }
-    );
-
-    input.value = "";
-  } catch (e) {
-    alert(e.message);
-  }
-};
-</script>
-</body>
-</html>
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import{getAuth,GoogleAuthProvider,signInWithRedirect,getRedirectResult,onAuthStateChanged,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getFirestore,doc,getDoc,setDoc,deleteDoc,collection,getDocs,query,where,addDoc,onSnapshot,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const config={apiKey:"AIzaSyDmsIygS5gwvvgZn2rDfUToI1gTlM-dmmM",authDomain:"rohan-raj-chat-85680.firebaseapp.com",projectId:"rohan-raj-chat-85680",storageBucket:"rohan-raj-chat-85680.firebasestorage.app",messagingSenderId:"565941235946",appId:"1:565941235946:web:295176ef9255e085006793"};
+const app=initializeApp(config),auth=getAuth(app),db=getFirestore(app),$=id=>document.getElementById(id);
+let me=null,activeChat=null,stopMessages=null,stopChats=null;
+const say=t=>$("status").textContent=t,phoneClean=p=>(p||"").replace(/\D/g,"").replace(/^91(?=\d{10}$)/,"");
+const hash=async p=>{let b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("RRCHAT_PHONE_V1:"+p));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")};
+const cid=(a,b)=>[a,b].sort().join("_"),esc=s=>String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+$("googleBtn").onclick=()=>signInWithRedirect(auth,new GoogleAuthProvider()).catch(e=>$("authStatus").textContent=e.message);
+$("signupBtn").onclick=()=>createUserWithEmailAndPassword(auth,$("email").value.trim(),$("password").value).catch(e=>$("authStatus").textContent=e.message);
+$("loginBtn").onclick=()=>signInWithEmailAndPassword(auth,$("email").value.trim(),$("password").value).catch(e=>$("authStatus").textContent=e.message);
+$("logoutBtn").onclick=()=>signOut(auth);$("saveProfile").onclick=saveProfile;$("searchBtn").onclick=searchFriends;$("sendBtn").onclick=sendMessage;
+$("messageInput").addEventListener("keydown",e=>{if(e.key==="Enter")sendMessage()});
+async function saveProfile(){try{let name=$("myName").value.trim(),p=phoneClean($("myPhone").value),yes=$("discoverable").checked;if(name.length<2)throw Error("Naam kam se kam 2 letters ka ho.");if(p&&p.length!==10)throw Error("10 digit Indian mobile number likhein.");let old=await getDoc(doc(db,"users",me.uid)),oldHash=old.exists()?old.data().phoneHash:null,newHash=p?await hash(p):null;
+await setDoc(doc(db,"users",me.uid),{uid:me.uid,name,email:me.email||"",photo:me.photoURL||"",phoneHash:newHash,discoverable:yes,updatedAt:serverTimestamp()},{merge:true});
+await setDoc(doc(db,"publicProfiles",me.uid),{uid:me.uid,name,photo:me.photoURL||"",discoverable:yes,updatedAt:serverTimestamp()});
+if(oldHash&&oldHash!==newHash){let r=doc(db,"phoneDirectory",oldHash),s=await getDoc(r);if(s.exists()&&s.data().uid===me.uid)await deleteDoc(r)}
+if(p&&yes)await setDoc(doc(db,"phoneDirectory",newHash),{uid:me.uid,name,photo:me.photoURL||"",phoneHash:newHash,discoverable:true,updatedAt:serverTimestamp()});
+else if(oldHash){let r=doc(db,"phoneDirectory",oldHash),s=await getDoc(r);if(s.exists()&&s.data().uid===me.uid)await deleteDoc(r)}
+say("Profile save ho gaya.")}catch(e){say(e.message)}}
+function addResult(box,u){let el=document.createElement("div");el.className="user";el.innerHTML="<b>"+esc(u.name||"Chat user")+"</b><br><button>Message</button>";el.querySelector("button").onclick=()=>openChat(u.uid,u.name||"Friend");box.appendChild(el)}
+async function searchFriends(){let t=$("searchInput").value.trim(),box=$("searchResults");box.innerHTML="";if(!t){box.textContent="Naam ya number likhein.";return}try{let p=phoneClean(t);if(p.length===10&&/^\d+$/.test(p)){let s=await getDoc(doc(db,"phoneDirectory",await hash(p)));if(s.exists()&&s.data().discoverable&&s.data().uid!==me.uid)addResult(box,s.data());else box.textContent="Is number se discoverable user nahi mila.";return}
+let s=await getDocs(collection(db,"publicProfiles")),n=0;s.forEach(d=>{let u=d.data();if(u.uid!==me.uid&&u.discoverable&&String(u.name||"").toLowerCase().includes(t.toLowerCase())&&n++<30)addResult(box,u)});if(!n)box.textContent="Koi user nahi mila."}catch(e){box.textContent=e.message}}
+async function openChat(other,name){try{let id=cid(me.uid,other),r=doc(db,"chats",id),s=await getDoc(r);if(!s.exists())await setDoc(r,{participants:[me.uid,other].sort(),lastMessage:"",createdAt:serverTimestamp(),updatedAt:serverTimestamp()});activeChat=id;$("chatTitle").textContent=name;if(stopMessages)stopMessages();$("messages").innerHTML="";stopMessages=onSnapshot(query(collection(db,"chats",id,"messages"),orderBy("createdAt","asc")),ss=>{$("messages").innerHTML="";ss.forEach(d=>{let m=d.data(),el=document.createElement("div");el.className="msg"+(m.senderId===me.uid?" mine":"");el.innerHTML=esc(m.text)+"<small>"+(m.senderId===me.uid?"You":"Friend")+"</small>";$("messages").appendChild(el)});$("messages").scrollTop=$("messages").scrollHeight},e=>say(e.message))}catch(e){say(e.message)}}
+async function sendMessage(){let t=$("messageInput").value.trim();if(!t||!activeChat)return;try{await addDoc(collection(db,"chats",activeChat,"messages"),{senderId:me.uid,text:t,createdAt:serverTimestamp()});await setDoc(doc(db,"chats",activeChat),{lastMessage:t.slice(0,100),updatedAt:serverTimestamp()},{merge:true});$("messageInput").value=""}catch(e){say(e.message)}}
+function loadChats(){if(stopChats)stopChats();stopChats=onSnapshot(query(collection(db,"chats"),where("participants","array-contains",me.uid)),async s=>{let box=$("chatList");box.innerHTML="";for(let d of s.docs){let c=d.data(),other=c.participants.find(x=>x!==me.uid);if(!other)continue;let name="Friend";try{let p=await getDoc(doc(db,"publicProfiles",other));if(p.exists())name=p.data().name||name}catch{}let el=document.createElement("div");el.className="user";el.innerHTML="<b>"+esc(name)+"</b><div class='muted'>"+esc(c.lastMessage||"Chat shuru karein")+"</div>";el.onclick=()=>openChat(other,name);box.appendChild(el)}},e=>say(e.message))}
+onAuthStateChanged(auth,async u=>{me=u;if(u){$("auth").classList.add("hidden");$("app").classList.remove("hidden");$("myEmail").textContent=u.email||"Google account";try{let s=await getDoc(doc(db,"users",u.uid));$("myName").value=s.exists()?s.data().name||u.displayName||"":u.displayName||"";$("discoverable").checked=s.exists()&&!!s.data().discoverable;$("welcome").textContent="Namaste, "+($("myName").value||"Rohan Raj");loadChats()}catch(e){say(e.message)}}else{$("auth").classList.remove("hidden");$("app").classList.add("hidden");if(stopChats)stopChats();if(stopMessages)stopMessages()}});
+getRedirectResult(auth).catch(e=>$("authStatus").textContent=e.message);
+</script></body></html>
