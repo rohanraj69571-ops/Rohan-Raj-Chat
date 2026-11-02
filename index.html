@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="hi">
 <head>
@@ -5,7 +6,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#10142b">
 <title>Rohan Raj Chat</title>
-
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#0b1020;color:#f4f5ff;font:15px Arial}
@@ -19,6 +19,8 @@ h2{font-size:18px;margin:0 0 12px}
 input{width:100%;padding:12px;margin:6px 0 10px;border-radius:9px;border:1px solid #414b78;background:#0d1330;color:white}
 button{padding:11px 14px;margin:4px 3px 4px 0;border:0;border-radius:9px;background:#7665ff;color:white;font-weight:bold}
 .secondary{background:#30395f}
+.danger{background:#c83d58}
+.green{background:#16875e}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .row>*{flex:1;min-width:120px}
 .hidden{display:none!important}
@@ -29,19 +31,22 @@ button{padding:11px 14px;margin:4px 3px 4px 0;border:0;border-radius:9px;backgro
 .mine{margin-left:auto;background:#594bd0}
 .msg small{display:block;font-size:10px;margin-top:5px;color:#d1d4f1}
 #status{font-size:13px;color:#c4c9eb;margin:8px 0}
+.callbox{background:#0d1330;border:1px solid #414b78;border-radius:12px;padding:12px;margin:12px 0}
+.callvideos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.callvideos video{width:100%;min-height:120px;background:#050817;border-radius:10px;object-fit:cover}
 @media(max-width:700px){
 .columns{grid-template-columns:1fr}
 #messages{height:270px}
+.callvideos{grid-template-columns:1fr}
 }
 </style>
 </head>
-
 <body>
 <header>
 <div class="logo">RA</div>
 <div>
 <h1>Rohan Raj Chat</h1>
-<span class="muted">Private messaging • Real-time chat</span>
+<span class="muted">Private messaging • Voice & Video Calls</span>
 </div>
 </header>
 
@@ -67,7 +72,6 @@ button{padding:11px 14px;margin:4px 3px 4px 0;border:0;border-radius:9px;backgro
 </div>
 <button class="secondary" id="logoutBtn">Logout</button>
 </div>
-
 <div class="row">
 <div class="muted">Your name
 <input id="myName" placeholder="Apna naam">
@@ -76,14 +80,13 @@ button{padding:11px 14px;margin:4px 3px 4px 0;border:0;border-radius:9px;backgro
 <input id="myPhone" inputmode="tel" placeholder="10 digit mobile number">
 </div>
 </div>
-
 <label class="muted">
 <input id="discoverable" type="checkbox" style="width:auto">
 Mera naam aur mobile number se mujhe search kiya ja sake (optional)
 </label>
 <br>
 <button id="saveProfile">Save profile</button>
-<p class="muted">Mobile number verify nahi hoga. Galat number bhi enter ho sakta hai. Sirf apna number dein aur search permission apni marzi se on karein.</p>
+<p class="muted">Mobile number verify nahi hoga. Sirf apna number dein.</p>
 </div>
 
 <div class="columns">
@@ -98,6 +101,34 @@ Mera naam aur mobile number se mujhe search kiya ja sake (optional)
 
 <section class="panel">
 <h2 id="chatTitle">Chat select karein</h2>
+
+<div id="callButtons" class="hidden">
+<button id="audioCallBtn" class="green">📞 Voice Call</button>
+<button id="videoCallBtn">🎥 Video Call</button>
+</div>
+
+<div id="incomingBox" class="callbox hidden">
+<b id="incomingText">Incoming call</b>
+<div>
+<button id="acceptBtn" class="green">Accept</button>
+<button id="rejectBtn" class="danger">Reject</button>
+</div>
+</div>
+
+<div id="activeCallBox" class="callbox hidden">
+<b id="callStatus">Call connecting...</b>
+<div class="callvideos">
+<video id="remoteVideo" autoplay playsinline></video>
+<video id="localVideo" autoplay muted playsinline></video>
+</div>
+<audio id="remoteAudio" autoplay></audio>
+<div>
+<button id="muteBtn" class="secondary">Mute mic</button>
+<button id="cameraBtn" class="secondary">Camera off</button>
+<button id="hangupBtn" class="danger">Hang Up</button>
+</div>
+</div>
+
 <div id="messages">
 <span class="muted">Left side se friend select karein.</span>
 </div>
@@ -105,23 +136,25 @@ Mera naam aur mobile number se mujhe search kiya ja sake (optional)
 <input id="messageInput" placeholder="Message likhein..." maxlength="2000">
 <button id="sendBtn">Send</button>
 </div>
-<p class="muted">Is version mein text chat hai. Voice/video calling abhi nahi hai.</p>
 </section>
 </div>
 </div>
-
 <div id="status"></div>
 </main>
 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-
-import{getFirestore,doc,getDoc,setDoc,deleteDoc,collection,getDocs,query,where,addDoc,onSnapshot,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import{
+getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,
+createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut
+}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{
+getFirestore,doc,getDoc,setDoc,deleteDoc,collection,getDocs,
+query,where,addDoc,onSnapshot,orderBy,serverTimestamp,updateDoc
+}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const config={
-apiKey:"AIzaSyDmsIygS5gwvvgZn2rDfUToI1gTlM-dmmM",
+apiKey:"AIzaSyDmsIygS5gwvvgZn2rDfUTo1gTlM-dmm",
 authDomain:"rohan-raj-chat-85680.firebaseapp.com",
 projectId:"rohan-raj-chat-85680",
 storageBucket:"rohan-raj-chat-85680.firebasestorage.app",
@@ -134,19 +167,22 @@ const auth=getAuth(app);
 const db=getFirestore(app);
 const $=id=>document.getElementById(id);
 
-let me=null,activeChat=null,stopMessages=null,stopChats=null;
+let me=null,activeChat=null,activeFriend=null;
+let stopMessages=null,stopChats=null,stopIncoming=null;
+let stopCall=null,stopCandidates=null;
+let pc=null,localStream=null,remoteStream=null;
+let activeCallId=null,incomingCall=null;
+let isCaller=false,callType="audio";
+let pendingCandidates=[],seenCandidates=new Set();
+let remoteDescriptionReady=false,endingCall=false;
 
 const say=t=>$("status").textContent=t;
-
 const phoneClean=p=>(p||"").replace(/\D/g,"").replace(/^91(?=\d{10}$)/,"");
-
 const hash=async p=>{
 let b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("RRCHAT_PHONE_V1:"+p));
 return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")
 };
-
 const cid=(a,b)=>[a,b].sort().join("_");
-
 const esc=s=>String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 $("googleBtn").onclick=async()=>{
@@ -155,34 +191,33 @@ $("authStatus").textContent="Google login ho raha hai...";
 const provider=new GoogleAuthProvider();
 provider.setCustomParameters({prompt:"select_account"});
 await signInWithPopup(auth,provider);
-}catch(e){
-$("authStatus").textContent="Login error: "+e.code+" - "+e.message;
-}
+}catch(e){$("authStatus").textContent="Login error: "+e.code+" - "+e.message}
 };
-
 $("signupBtn").onclick=async()=>{
-try{
-await createUserWithEmailAndPassword(auth,$("email").value.trim(),$("password").value);
-}catch(e){
-$("authStatus").textContent=e.code+" - "+e.message;
-}
+try{await createUserWithEmailAndPassword(auth,$("email").value.trim(),$("password").value)}
+catch(e){$("authStatus").textContent=e.code+" - "+e.message}
 };
-
 $("loginBtn").onclick=async()=>{
-try{
-await signInWithEmailAndPassword(auth,$("email").value.trim(),$("password").value);
-}catch(e){
-$("authStatus").textContent=e.code+" - "+e.message;
-}
+try{await signInWithEmailAndPassword(auth,$("email").value.trim(),$("password").value)}
+catch(e){$("authStatus").textContent=e.code+" - "+e.message}
 };
-
-$("logoutBtn").onclick=()=>signOut(auth);
+$("logoutBtn").onclick=async()=>{
+if(activeCallId)await endCall();
+await signOut(auth);
+};
 $("saveProfile").onclick=saveProfile;
 $("searchBtn").onclick=searchFriends;
 $("sendBtn").onclick=sendMessage;
+$("audioCallBtn").onclick=()=>startCall("audio");
+$("videoCallBtn").onclick=()=>startCall("video");
+$("acceptBtn").onclick=acceptCall;
+$("rejectBtn").onclick=rejectCall;
+$("hangupBtn").onclick=endCall;
+$("muteBtn").onclick=toggleMute;
+$("cameraBtn").onclick=toggleCamera;
 
 $("messageInput").addEventListener("keydown",e=>{
-if(e.key==="Enter")sendMessage()
+if(e.key==="Enter")sendMessage();
 });
 
 async function saveProfile(){
@@ -190,7 +225,6 @@ try{
 let name=$("myName").value.trim();
 let p=phoneClean($("myPhone").value);
 let yes=$("discoverable").checked;
-
 if(name.length<2)throw Error("Naam kam se kam 2 letters ka ho.");
 if(p&&p.length!==10)throw Error("10 digit Indian mobile number likhein.");
 
@@ -199,21 +233,13 @@ let oldHash=old.exists()?old.data().phoneHash:null;
 let newHash=p?await hash(p):null;
 
 await setDoc(doc(db,"users",me.uid),{
-uid:me.uid,
-name,
-email:me.email||"",
-photo:me.photoURL||"",
-phoneHash:newHash,
-discoverable:yes,
-updatedAt:serverTimestamp()
+uid:me.uid,name,email:me.email||"",photo:me.photoURL||"",
+phoneHash:newHash,discoverable:yes,updatedAt:serverTimestamp()
 },{merge:true});
 
 await setDoc(doc(db,"publicProfiles",me.uid),{
-uid:me.uid,
-name,
-photo:me.photoURL||"",
-discoverable:yes,
-updatedAt:serverTimestamp()
+uid:me.uid,name,photo:me.photoURL||"",
+discoverable:yes,updatedAt:serverTimestamp()
 });
 
 if(oldHash&&oldHash!==newHash){
@@ -221,26 +247,18 @@ let r=doc(db,"phoneDirectory",oldHash);
 let s=await getDoc(r);
 if(s.exists()&&s.data().uid===me.uid)await deleteDoc(r);
 }
-
 if(p&&yes){
 await setDoc(doc(db,"phoneDirectory",newHash),{
-uid:me.uid,
-name,
-photo:me.photoURL||"",
-phoneHash:newHash,
-discoverable:true,
-updatedAt:serverTimestamp()
+uid:me.uid,name,photo:me.photoURL||"",phoneHash:newHash,
+discoverable:true,updatedAt:serverTimestamp()
 });
 }else if(oldHash){
 let r=doc(db,"phoneDirectory",oldHash);
 let s=await getDoc(r);
 if(s.exists()&&s.data().uid===me.uid)await deleteDoc(r);
 }
-
 say("Profile save ho gaya.");
-}catch(e){
-say(e.message);
-}
+}catch(e){say(e.message)}
 }
 
 function addResult(box,u){
@@ -255,37 +273,23 @@ async function searchFriends(){
 let t=$("searchInput").value.trim();
 let box=$("searchResults");
 box.innerHTML="";
-
-if(!t){
-box.textContent="Naam ya number likhein.";
-return;
-}
-
+if(!t){box.textContent="Naam ya number likhein.";return}
 try{
 let p=phoneClean(t);
-
 if(p.length===10&&/^\d+$/.test(p)){
 let s=await getDoc(doc(db,"phoneDirectory",await hash(p)));
-if(s.exists()&&s.data().discoverable&&s.data().uid!==me.uid)
-addResult(box,s.data());
+if(s.exists()&&s.data().discoverable&&s.data().uid!==me.uid)addResult(box,s.data());
 else box.textContent="Is number se discoverable user nahi mila.";
 return;
 }
-
 let s=await getDocs(collection(db,"publicProfiles"));
 let n=0;
-
 s.forEach(d=>{
 let u=d.data();
-if(u.uid!==me.uid&&u.discoverable&&String(u.name||"").toLowerCase().includes(t.toLowerCase())&&n++<30)
-addResult(box,u);
+if(u.uid!==me.uid&&u.discoverable&&String(u.name||"").toLowerCase().includes(t.toLowerCase())&&n++<30)addResult(box,u);
 });
-
 if(!n)box.textContent="Koi user nahi mila.";
-
-}catch(e){
-box.textContent=e.message;
-}
+}catch(e){box.textContent=e.message}
 }
 
 async function openChat(other,name){
@@ -293,23 +297,18 @@ try{
 let id=cid(me.uid,other);
 let r=doc(db,"chats",id);
 let s=await getDoc(r);
-
 if(!s.exists()){
 await setDoc(r,{
-participants:[me.uid,other].sort(),
-lastMessage:"",
-createdAt:serverTimestamp(),
-updatedAt:serverTimestamp()
+participants:[me.uid,other].sort(),lastMessage:"",
+createdAt:serverTimestamp(),updatedAt:serverTimestamp()
 });
 }
-
 activeChat=id;
+activeFriend={uid:other,name};
 $("chatTitle").textContent=name;
-
+$("callButtons").classList.remove("hidden");
 if(stopMessages)stopMessages();
-
 $("messages").innerHTML="";
-
 stopMessages=onSnapshot(
 query(collection(db,"chats",id,"messages"),orderBy("createdAt","asc")),
 ss=>{
@@ -322,93 +321,332 @@ el.innerHTML=esc(m.text)+"<small>"+(m.senderId===me.uid?"You":"Friend")+"</small
 $("messages").appendChild(el);
 });
 $("messages").scrollTop=$("messages").scrollHeight;
-},
-e=>say(e.message)
+},e=>say(e.message)
 );
-
-}catch(e){
-say(e.message);
-}
+}catch(e){say(e.message)}
 }
 
 async function sendMessage(){
 let t=$("messageInput").value.trim();
-
 if(!t||!activeChat)return;
-
 try{
 await addDoc(collection(db,"chats",activeChat,"messages"),{
-senderId:me.uid,
-text:t,
-createdAt:serverTimestamp()
+senderId:me.uid,text:t,createdAt:serverTimestamp()
 });
-
 await setDoc(doc(db,"chats",activeChat),{
-lastMessage:t.slice(0,100),
-updatedAt:serverTimestamp()
+lastMessage:t.slice(0,100),updatedAt:serverTimestamp()
 },{merge:true});
-
 $("messageInput").value="";
-}catch(e){
-say(e.message);
-}
+}catch(e){say(e.message)}
 }
 
 function loadChats(){
 if(stopChats)stopChats();
-
 stopChats=onSnapshot(
 query(collection(db,"chats"),where("participants","array-contains",me.uid)),
 async s=>{
 let box=$("chatList");
 box.innerHTML="";
-
 for(let d of s.docs){
 let c=d.data();
 let other=c.participants.find(x=>x!==me.uid);
 if(!other)continue;
-
 let name="Friend";
-
 try{
 let p=await getDoc(doc(db,"publicProfiles",other));
 if(p.exists())name=p.data().name||name;
 }catch{}
-
 let el=document.createElement("div");
 el.className="user";
 el.innerHTML="<b>"+esc(name)+"</b><div class='muted'>"+esc(c.lastMessage||"Chat shuru karein")+"</div>";
 el.onclick=()=>openChat(other,name);
 box.appendChild(el);
 }
-},
-e=>say(e.message)
+},e=>say(e.message)
 );
+}
+
+function listenForCalls(){
+if(stopIncoming)stopIncoming();
+stopIncoming=onSnapshot(
+query(collection(db,"calls"),
+where("calleeId","==",me.uid),
+where("status","==","ringing")),
+ss=>{
+ss.docChanges().forEach(change=>{
+if(change.type==="added"&&!activeCallId){
+incomingCall={id:change.doc.id,...change.doc.data()};
+$("incomingText").textContent=
+(incomingCall.type==="video"?"Video":"Voice")+" call aa rahi hai";
+$("incomingBox").classList.remove("hidden");
+}
+});
+},e=>say("Incoming call error: "+e.message)
+);
+}
+
+function makePeer(){
+pc=new RTCPeerConnection({
+iceServers:[
+{urls:"stun:stun.l.google.com:19302"},
+{urls:"stun:stun1.l.google.com:19302"}
+]
+});
+remoteStream=new MediaStream();
+$("remoteVideo").srcObject=remoteStream;
+$("remoteAudio").srcObject=remoteStream;
+pc.ontrack=e=>{
+e.streams[0].getTracks().forEach(track=>{
+if(!remoteStream.getTracks().some(t=>t.id===track.id))remoteStream.addTrack(track);
+});
+};
+pc.onconnectionstatechange=()=>{
+if(!pc)return;
+$("callStatus").textContent="Call: "+pc.connectionState;
+if(pc.connectionState==="failed"||pc.connectionState==="disconnected"){
+say("Call connection ruk gaya. Internet ya network check karein.");
+}
+};
+}
+
+function showCall(type){
+$("activeCallBox").classList.remove("hidden");
+$("callButtons").classList.add("hidden");
+$("callStatus").textContent=(type==="video"?"Video":"Voice")+" call connecting...";
+$("remoteVideo").classList.toggle("hidden",type!=="video");
+$("localVideo").classList.toggle("hidden",type!=="video");
+$("muteBtn").textContent="Mute mic";
+$("cameraBtn").classList.toggle("hidden",type!=="video");
+}
+
+function hideCallUI(){
+$("activeCallBox").classList.add("hidden");
+$("incomingBox").classList.add("hidden");
+$("callButtons").classList.toggle("hidden",!activeChat);
+$("remoteVideo").srcObject=null;
+$("localVideo").srcObject=null;
+$("remoteAudio").srcObject=null;
+}
+
+async function writeCandidate(path,candidate){
+await addDoc(collection(db,"calls",activeCallId,path),{
+uid:me.uid,
+candidate:candidate.candidate,
+sdpMid:candidate.sdpMid,
+sdpMLineIndex:candidate.sdpMLineIndex
+});
+}
+
+async function flushCandidates(path){
+let list=pendingCandidates.splice(0);
+for(const c of list){
+try{await writeCandidate(path,c)}
+catch(e){say("ICE candidate error: "+e.message)}
+}
+}
+
+function watchCandidates(path){
+if(stopCandidates)stopCandidates();
+seenCandidates=new Set();
+stopCandidates=onSnapshot(collection(db,"calls",activeCallId,path),ss=>{
+ss.docChanges().forEach(async change=>{
+if(change.type!=="added"||seenCandidates.has(change.doc.id))return;
+seenCandidates.add(change.doc.id);
+let c=change.doc.data();
+if(c.uid===me.uid)return;
+if(!remoteDescriptionReady)return;
+try{
+await pc.addIceCandidate(new RTCIceCandidate({
+candidate:c.candidate,
+sdpMid:c.sdpMid,
+sdpMLineIndex:c.sdpMLineIndex
+}));
+}catch(e){console.warn("ICE candidate:",e)}
+});
+},e=>say("Candidate error: "+e.message));
+}
+
+async function startCall(type){
+if(!activeFriend||!activeChat){say("Pehle friend ki chat select karein.");return}
+if(activeCallId){say("Ek call pehle se chal rahi hai.");return}
+try{
+callType=type;
+isCaller=true;
+endingCall=false;
+pendingCandidates=[];
+remoteDescriptionReady=false;
+$("callStatus").textContent="Camera/microphone permission maangi ja rahi hai...";
+localStream=await navigator.mediaDevices.getUserMedia({
+audio:true,video:type==="video"
+});
+$("localVideo").srcObject=localStream;
+makePeer();
+localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+pc.onicecandidate=e=>{
+if(e.candidate){
+if(activeCallId)writeCandidate("callerCandidates",e.candidate).catch(err=>say(err.message));
+else pendingCandidates.push(e.candidate);
+}
+};
+let offer=await pc.createOffer();
+await pc.setLocalDescription(offer);
+
+let ref=await addDoc(collection(db,"calls"),{
+callerId:me.uid,calleeId:activeFriend.uid,status:"ringing",
+type,offer:{type:pc.localDescription.type,sdp:pc.localDescription.sdp},
+answer:null,createdAt:serverTimestamp(),updatedAt:serverTimestamp()
+});
+activeCallId=ref.id;
+showCall(type);
+await flushCandidates("callerCandidates");
+watchCandidates("calleeCandidates");
+watchActiveCall();
+say("Call lag rahi hai...");
+}catch(e){
+say("Call start nahi hui: "+e.message);
+await cleanupCall();
+}
+}
+
+function watchActiveCall(){
+if(stopCall)stopCall();
+stopCall=onSnapshot(doc(db,"calls",activeCallId),async s=>{
+if(!s.exists())return;
+let data=s.data();
+if(isCaller&&data.answer&&!remoteDescriptionReady){
+try{
+await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+remoteDescriptionReady=true;
+await flushCandidates("callerCandidates");
+$("callStatus").textContent="Call connected / waiting...";
+}catch(e){say("Answer error: "+e.message)}
+}
+if(data.status==="declined"){
+say("Friend ne call reject kar di.");
+await cleanupCall();
+}
+if(data.status==="ended"){
+say("Call end ho gayi.");
+await cleanupCall();
+}
+},e=>say("Call update error: "+e.message));
+}
+
+async function acceptCall(){
+if(!incomingCall)return;
+try{
+let data=incomingCall;
+activeCallId=data.id;
+incomingCall=null;
+isCaller=false;
+callType=data.type;
+endingCall=false;
+pendingCandidates=[];
+remoteDescriptionReady=false;
+$("incomingBox").classList.add("hidden");
+localStream=await navigator.mediaDevices.getUserMedia({
+audio:true,video:callType==="video"
+});
+$("localVideo").srcObject=localStream;
+makePeer();
+localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+pc.onicecandidate=e=>{
+if(e.candidate){
+if(activeCallId)writeCandidate("calleeCandidates",e.candidate).catch(err=>say(err.message));
+else pendingCandidates.push(e.candidate);
+}
+};
+await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+remoteDescriptionReady=true;
+watchCandidates("callerCandidates");
+let answer=await pc.createAnswer();
+await pc.setLocalDescription(answer);
+await updateDoc(doc(db,"calls",activeCallId),{
+status:"accepted",
+answer:{type:pc.localDescription.type,sdp:pc.localDescription.sdp},
+updatedAt:serverTimestamp()
+});
+showCall(callType);
+await flushCandidates("calleeCandidates");
+watchActiveCall();
+say("Call accept ho gayi.");
+}catch(e){
+say("Call accept nahi hui: "+e.message);
+await cleanupCall();
+}
+}
+
+async function rejectCall(){
+if(!incomingCall)return;
+try{
+await updateDoc(doc(db,"calls",incomingCall.id),{
+status:"declined",updatedAt:serverTimestamp()
+});
+}catch(e){say(e.message)}
+incomingCall=null;
+$("incomingBox").classList.add("hidden");
+}
+
+async function endCall(){
+if(!activeCallId)return;
+let id=activeCallId;
+try{
+await updateDoc(doc(db,"calls",id),{
+status:"ended",updatedAt:serverTimestamp()
+});
+}catch(e){say("Call end update: "+e.message)}
+await cleanupCall();
+}
+
+async function cleanupCall(){
+if(stopCall){stopCall();stopCall=null}
+if(stopCandidates){stopCandidates();stopCandidates=null}
+if(pc){pc.onicecandidate=null;pc.close();pc=null}
+if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}
+if(remoteStream){remoteStream.getTracks().forEach(t=>t.stop());remoteStream=null}
+activeCallId=null;
+pendingCandidates=[];
+seenCandidates.clear();
+remoteDescriptionReady=false;
+endingCall=false;
+hideCallUI();
+}
+
+function toggleMute(){
+if(!localStream)return;
+let track=localStream.getAudioTracks()[0];
+if(!track)return;
+track.enabled=!track.enabled;
+$("muteBtn").textContent=track.enabled?"Mute mic":"Unmute mic";
+}
+function toggleCamera(){
+if(!localStream)return;
+let track=localStream.getVideoTracks()[0];
+if(!track)return;
+track.enabled=!track.enabled;
+$("cameraBtn").textContent=track.enabled?"Camera off":"Camera on";
 }
 
 onAuthStateChanged(auth,async u=>{
 me=u;
-
 if(u){
 $("auth").classList.add("hidden");
 $("app").classList.remove("hidden");
 $("myEmail").textContent=u.email||"Google account";
-
 try{
 let s=await getDoc(doc(db,"users",u.uid));
 $("myName").value=s.exists()?s.data().name||u.displayName||"":u.displayName||"";
 $("discoverable").checked=s.exists()&&!!s.data().discoverable;
 loadChats();
-}catch(e){
-say(e.message);
-}
-
+listenForCalls();
+}catch(e){say(e.message)}
 }else{
 $("auth").classList.remove("hidden");
 $("app").classList.add("hidden");
-
-if(stopChats)stopChats();
-if(stopMessages)stopMessages();
+if(stopChats){stopChats();stopChats=null}
+if(stopMessages){stopMessages();stopMessages=null}
+if(stopIncoming){stopIncoming();stopIncoming=null}
+await cleanupCall();
 }
 });
 </script>
