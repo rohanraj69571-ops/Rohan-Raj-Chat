@@ -655,6 +655,7 @@ $("cameraBtn").textContent=track.enabled?"Camera off":"Camera on";
 }
 
 onAuthStateChanged(auth,async u=>{
+  console.log("LOGIN USER:", u?.uid);
   if(u){
   try {
     const statusRef = ref(rtdb, "status/" + u.uid);
