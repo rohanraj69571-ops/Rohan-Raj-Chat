@@ -636,6 +636,16 @@ $("app").classList.remove("hidden");
 $("myEmail").textContent=u.email||"Google account";
 try{
 let s=await getDoc(doc(db,"users",u.uid));
+  let photo=(s.exists()&&s.data().photo)||u.photoURL||"";
+let photoEl=$("myPhoto");
+if(photoEl){
+if(photo){
+photoEl.src=photo;
+photoEl.style.display="block";
+}else{
+photoEl.style.display="none";
+}
+}
 $("myName").value=s.exists()?s.data().name||u.displayName||"":u.displayName||"";
 $("discoverable").checked=s.exists()&&!!s.data().discoverable;
 loadChats();
