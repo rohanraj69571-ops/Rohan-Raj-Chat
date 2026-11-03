@@ -172,6 +172,7 @@ appId:"1:565941235946:web:295176ef9255e085006793"
 const app=initializeApp(config);
 const auth=getAuth(app);
 const db=getFirestore(app);
+  const rtdb=getDatabase(app);
 const $=id=>document.getElementById(id);
 
 let me=null,activeChat=null,activeFriend=null;
