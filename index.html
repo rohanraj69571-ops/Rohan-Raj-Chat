@@ -272,9 +272,28 @@ say("Profile save ho gaya.");
 function addResult(box,u){
 let el=document.createElement("div");
 el.className="user";
-el.innerHTML="<b>"+esc(u.name||"Chat user")+"</b><br><button>Message</button>";
+
+let name=esc(u.name||"Chat user");
+
+el.innerHTML=`
+<b>${name}</b>
+<span id="status-${u.uid}" style="color:gray;font-size:12px;">Checking...</span>
+<br><button>Message</button>
+`;
+
 el.querySelector("button").onclick=()=>openChat(u.uid,u.name||"Friend");
 box.appendChild(el);
+
+let statusRef=ref(rtdb,"status/"+u.uid);
+
+onValue(statusRef,s=>{
+let statusEl=$("status-"+u.uid);
+if(!statusEl)return;
+
+let online=s.exists()&&s.val().state==="online";
+statusEl.textContent=online?"● Online":"● Offline";
+statusEl.style.color=online?"green":"gray";
+});
 }
 
 async function searchFriends(){
