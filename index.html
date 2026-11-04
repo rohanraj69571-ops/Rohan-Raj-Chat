@@ -203,6 +203,9 @@ await signInWithRedirect(auth,provider);
 $("authStatus").textContent="Login error: "+e.code+" - "+e.message;
 }
 };
+getRedirectResult(auth).catch(e=>{
+  $("authStatus").textContent="Login error: "+e.code+" - "+e.message;
+});
 $("signupBtn").onclick=async()=>{
 try{await createUserWithEmailAndPassword(auth,$("email").value.trim(),$("password").value)}
 catch(e){$("authStatus").textContent=e.code+" - "+e.message}
