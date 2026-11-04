@@ -203,13 +203,13 @@ await signInWithRedirect(auth,provider);
 $("authStatus").textContent="Login error: "+e.code+" - "+e.message;
 }
 };
-getRedirectResult(auth).catch(e=>{
+getRedirectResult(auth).then(result=>{
+  $("authStatus").textContent=result
+    ? "Google result mila: "+result.user.email
+    : "Google result nahi mila. Login dobara try karein.";
+}).catch(e=>{
   $("authStatus").textContent="Login error: "+e.code+" - "+e.message;
 });
-$("signupBtn").onclick=async()=>{
-try{await createUserWithEmailAndPassword(auth,$("email").value.trim(),$("password").value)}
-catch(e){$("authStatus").textContent=e.code+" - "+e.message}
-};
 $("loginBtn").onclick=async()=>{
 try{await signInWithEmailAndPassword(auth,$("email").value.trim(),$("password").value)}
 catch(e){$("authStatus").textContent=e.code+" - "+e.message}
