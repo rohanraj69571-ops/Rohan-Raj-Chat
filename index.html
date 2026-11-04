@@ -661,23 +661,6 @@ $("cameraBtn").textContent=track.enabled?"Camera off":"Camera on";
 
 onAuthStateChanged(auth,async u=>{
   console.log("LOGIN USER:", u?.uid);
-  if(u){
-  try {
-    const statusRef = ref(rtdb, "status/" + u.uid);
-
-    await onDisconnect(statusRef).set({
-      state: "offline",
-      lastChanged: { ".sv": "timestamp" }
-    });
-
-    await set(statusRef, {
-      state: "online",
-      lastChanged: { ".sv": "timestamp" }
-    });
-  } catch(e) {
-    console.warn("Presence error:", e);
-  }
-  }
 me=u;
 if(u){
 $("auth").classList.add("hidden");
