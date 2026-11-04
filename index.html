@@ -198,8 +198,10 @@ try{
 $("authStatus").textContent="Google login ho raha hai...";
 const provider=new GoogleAuthProvider();
 provider.setCustomParameters({prompt:"select_account"});
-await signInWithPopup(auth,provider);
-}catch(e){$("authStatus").textContent="Login error: "+e.code+" - "+e.message}
+await signInWithRedirect(auth,provider);
+}catch(e){
+$("authStatus").textContent="Login error: "+e.code+" - "+e.message;
+}
 };
 $("signupBtn").onclick=async()=>{
 try{await createUserWithEmailAndPassword(auth,$("email").value.trim(),$("password").value)}
