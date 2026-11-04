@@ -192,24 +192,17 @@ return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")
 };
 const cid=(a,b)=>[a,b].sort().join("_");
 const esc=s=>String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-
 $("googleBtn").onclick=async()=>{
 try{
 $("authStatus").textContent="Google login ho raha hai...";
 const provider=new GoogleAuthProvider();
 provider.setCustomParameters({prompt:"select_account"});
-await signInWithRedirect(auth,provider);
+const result=await signInWithPopup(auth,provider);
+$("authStatus").textContent="Login successful: "+result.user.email;
 }catch(e){
 $("authStatus").textContent="Login error: "+e.code+" - "+e.message;
 }
 };
-getRedirectResult(auth).then(result=>{
-  $("authStatus").textContent=result
-    ? "Google result mila: "+result.user.email
-    : "Google result nahi mila. Login dobara try karein.";
-}).catch(e=>{
-  $("authStatus").textContent="Login error: "+e.code+" - "+e.message;
-});
 $("loginBtn").onclick=async()=>{
 try{await signInWithEmailAndPassword(auth,$("email").value.trim(),$("password").value)}
 catch(e){$("authStatus").textContent=e.code+" - "+e.message}
