@@ -686,6 +686,7 @@ onAuthStateChanged(auth,async u=>{
   console.log("LOGIN USER:", u?.uid);
 me=u;
 if(u){
+setupPresence(u.uid);
 $("auth").classList.add("hidden");
 $("app").classList.remove("hidden");
 $("myEmail").textContent=u.email||"Google account";
