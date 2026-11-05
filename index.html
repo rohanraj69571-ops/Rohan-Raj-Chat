@@ -179,6 +179,33 @@ const db=getFirestore(app);
 const $=id=>document.getElementById(id);
 
 let me=null,activeChat=null,activeFriend=null;
+let stopPresence=null;
+
+function setupPresence(uid){
+  if(stopPresence)stopPresence();
+
+  const connectedRef=ref(rtdb,".info/connected");
+
+  stopPresence=onValue(connectedRef,async snap=>{
+    if(snap.val()===true){
+      const statusRef=ref(rtdb,"status/"+uid);
+
+      try{
+        await onDisconnect(statusRef).set({
+          state:"offline",
+          lastChanged:Date.now()
+        });
+
+        await set(statusRef,{
+          state:"online",
+          lastChanged:Date.now()
+        });
+      }catch(e){
+        say("Online status error: "+e.message);
+      }
+    }
+  });
+}
 let stopMessages=null,stopChats=null,stopIncoming=null;
 let stopCall=null,stopCandidates=null;
 let pc=null,localStream=null,remoteStream=null;
