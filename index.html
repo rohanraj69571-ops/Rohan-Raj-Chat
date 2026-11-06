@@ -699,6 +699,10 @@ if(photo){
 photoEl.src=photo;
 photoEl.style.display="block";
 }else{
+if(stopPresence){
+  stopPresence();
+  stopPresence=null;
+}
 photoEl.style.display="none";
 }
 }
