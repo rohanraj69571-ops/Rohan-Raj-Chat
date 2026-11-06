@@ -163,6 +163,11 @@ set,
 onValue,
 onDisconnect
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  import {
+  getMessaging,
+  getToken,
+  onMessage
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 const config={
 apiKey:"AIzaSyDmsIygS5gwvvgZn2rDfUToI1gTlM-dmmM",
 authDomain:"rohan-raj-chat-85680.firebaseapp.com",
@@ -176,6 +181,43 @@ const app=initializeApp(config);
 const auth=getAuth(app);
 const db=getFirestore(app);
   const rtdb=getDatabase(app);
+  const messaging = getMessaging(app);
+
+let fcmToken = null;
+
+async function enableNotifications() {
+  try {
+    const permission = await Notification.requestPermission();
+
+    if (permission !== "granted") {
+      alert("Notification permission nahi mili.");
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.register(
+      "/firebase-messaging-sw.js"
+    );
+
+    fcmToken = await getToken(messaging, {
+      vapidKey: "BE1RGzh-taQ_N-XmEsPFusljH2BIcOhWwBM__T3zkPjsXsbj4pJWDeE4iWIbRw869mpueq_ku3fNc4KBr-eZ-CM",
+      serviceWorkerRegistration: registration
+    });
+
+    console.log("FCM Token:", fcmToken);
+    alert("Notification permission ON ho gayi!");
+  } catch (error) {
+    console.error(error);
+    alert("Notification error: " + error.message);
+  }
+}
+
+onMessage(messaging, (payload) => {
+  alert(
+    payload.notification?.title || "Rohan Raj Chat" +
+    "\n" +
+    (payload.notification?.body || "Naya message aaya hai.")
+  );
+});
 const $=id=>document.getElementById(id);
 
 let me=null,activeChat=null,activeFriend=null;
