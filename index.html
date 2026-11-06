@@ -196,7 +196,7 @@ const db=getFirestore(app);
   const messaging = getMessaging(app);
 
 let fcmToken = null;
-
+window.enableNotifications = enableNotifications;
 async function enableNotifications() {
 alert("Notification button working!");
   try {
