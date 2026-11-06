@@ -198,7 +198,6 @@ const db=getFirestore(app);
 let fcmToken = null;
 window.enableNotifications = enableNotifications;
 async function enableNotifications() {
-alert("Notification button working!");
   try {
     const permission = await Notification.requestPermission();
 
@@ -215,9 +214,27 @@ alert("Notification button working!");
       vapidKey: "BE1RGzh-taQ_N-XmEsPFusljH2BIcOhWwBM__T3zkPjsXsbj4pJWDeE4iWIbRw869mpueq_ku3fNc4KBr-eZ-CM",
       serviceWorkerRegistration: registration
     });
+if (!me) {
+  alert("Pehle login karein.");
+  return;
+}
 
-    console.log("FCM Token:", fcmToken);
-    alert("Notification permission ON ho gayi!");
+await setDoc(doc(db, "users", me.uid), {
+  fcmToken: fcmToken,
+  notificationsEnabled: true,
+  fcmTokenUpdatedAt: serverTimestamp()
+}, { merge: true });
+
+console.log("FCM Token Firebase mein save ho gaya");
+alert("Notification ON aur Token Firebase mein save ho gaya!");
+  await setDoc(doc(db, "users", me.uid), {
+  fcmToken: fcmToken,
+  notificationsEnabled: true,
+  fcmTokenUpdatedAt: serverTimestamp()
+}, { merge: true });
+
+console.log("FCM Token Firebase mein save ho gaya");
+alert("Notification ON aur Token Firebase mein save ho gaya!");
   } catch (error) {
     console.error(error);
     alert("Notification error: " + error.message);
