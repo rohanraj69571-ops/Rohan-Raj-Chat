@@ -192,6 +192,7 @@ const db=getFirestore(app);
 let fcmToken = null;
 
 async function enableNotifications() {
+alert("Notification button working!");
   try {
     const permission = await Notification.requestPermission();
 
