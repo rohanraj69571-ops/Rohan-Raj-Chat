@@ -285,6 +285,49 @@ let pendingCandidates=[],seenCandidates=new Set();
 let remoteDescriptionReady=false,endingCall=false;
 
 const say=t=>$("status").textContent=t;
+
+let ringtoneContext=null, ringtoneTimer=null, ringtoneStep=0;
+
+function unlockRingtone(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return;
+    if(!ringtoneContext)ringtoneContext=new AC();
+    if(ringtoneContext.state==="suspended")ringtoneContext.resume().catch(()=>{});
+  }catch(e){}
+}
+
+document.addEventListener("pointerdown",unlockRingtone,{once:true});
+
+function startRingtone(){
+  if(ringtoneTimer)return;
+  unlockRingtone();
+  if(!ringtoneContext)return;
+  const notes=[880,660,880,660];
+  ringtoneStep=0;
+  ringtoneTimer=setInterval(()=>{
+    if(!ringtoneContext||ringtoneContext.state!=="running")return;
+    const osc=ringtoneContext.createOscillator();
+    const gain=ringtoneContext.createGain();
+    const now=ringtoneContext.currentTime;
+    osc.type="sine";
+    osc.frequency.value=notes[ringtoneStep++%notes.length];
+    gain.gain.setValueAtTime(0.0001,now);
+    gain.gain.exponentialRampToValueAtTime(0.12,now+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001,now+0.22);
+    osc.connect(gain);
+    gain.connect(ringtoneContext.destination);
+    osc.start(now);
+    osc.stop(now+0.23);
+  },400);
+}
+
+function stopRingtone(){
+  if(ringtoneTimer){
+    clearInterval(ringtoneTimer);
+    ringtoneTimer=null;
+  }
+}
 const phoneClean=p=>(p||"").replace(/\D/g,"").replace(/^91(?=\d{10}$)/,"");
 const hash=async p=>{
 let b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("RRCHAT_PHONE_V1:"+p));
@@ -499,11 +542,17 @@ where("calleeId","==",me.uid),
 where("status","==","ringing")),
 ss=>{
 ss.docChanges().forEach(change=>{
+if(change.type==="removed"&&incomingCall?.id===change.doc.id){
+stopRingtone();
+incomingCall=null;
+$("incomingBox").classList.add("hidden");
+}
 if(change.type==="added"&&!activeCallId){
 incomingCall={id:change.doc.id,...change.doc.data()};
 $("incomingText").textContent=
 (incomingCall.type==="video"?"Video":"Voice")+" call aa rahi hai";
 $("incomingBox").classList.remove("hidden");
+startRingtone();
 }
 });
 },e=>say("Incoming call error: "+e.message)
@@ -659,6 +708,7 @@ await cleanupCall();
 
 async function acceptCall(){
 if(!incomingCall)return;
+stopRingtone();
 try{
 let data=incomingCall;
 activeCallId=data.id;
@@ -703,6 +753,7 @@ await cleanupCall();
 
 async function rejectCall(){
 if(!incomingCall)return;
+stopRingtone();
 try{
 await updateDoc(doc(db,"calls",incomingCall.id),{
 status:"declined",updatedAt:serverTimestamp()
@@ -724,6 +775,7 @@ await cleanupCall();
 }
 
 async function cleanupCall(){
+stopRingtone();
 if(stopCall){stopCall();stopCall=null}
 if(stopCandidates){stopCandidates();stopCandidates=null}
 if(pc){pc.onicecandidate=null;pc.close();pc=null}
