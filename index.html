@@ -362,8 +362,12 @@ try{await signInWithEmailAndPassword(auth,$("email").value.trim(),$("password").
 catch(e){$("authStatus").textContent=e.code+" - "+e.message}
 };
 $("logoutBtn").onclick=async()=>{
+try{
 if(activeCallId)await endCall();
 await signOut(auth);
+if(Capacitor.isNativePlatform()) await FirebaseAuthentication.signOut();
+$("authStatus").textContent="Logout successful. Ab doosra Google account chun sakte hain.";
+}catch(e){$("authStatus").textContent="Logout error: "+e.message;}
 };
 $("saveProfile").onclick=saveProfile;
 $("searchBtn").onclick=searchFriends;
