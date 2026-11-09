@@ -159,27 +159,29 @@ Mera naam aur mobile number se mujhe search kiya ja sake (optional)
 </main>
 
 <script type="module">
-import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { Capacitor } from "@capacitor/core";
+import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
+import{initializeApp}from"firebase/app";
 import{
-getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,
+getAuth,initializeAuth,indexedDBLocalPersistence,signInWithCredential,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,
 createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut
-}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+}from"firebase/auth";
 import{
 getFirestore,doc,getDoc,setDoc,deleteDoc,collection,getDocs,
 query,where,addDoc,onSnapshot,orderBy,serverTimestamp,updateDoc
-}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+}from"firebase/firestore";
 import {
 getDatabase,
 ref,
 set,
 onValue,
 onDisconnect
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+} from "firebase/database";
   import {
   getMessaging,
   getToken,
   onMessage
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
+} from "firebase/messaging";
 const config={
 apiKey:"AIzaSyDmsIygS5gwvvgZn2rDfUToI1gTlM-dmmM",
 authDomain:"rohan-raj-chat-85680.firebaseapp.com",
@@ -190,7 +192,7 @@ appId:"1:565941235946:web:295176ef9255e085006793"
 };
 
 const app=initializeApp(config);
-const auth=getAuth(app);
+const auth=Capacitor.isNativePlatform()?initializeAuth(app,{persistence:indexedDBLocalPersistence}):getAuth(app);
 const db=getFirestore(app);
   const rtdb=getDatabase(app);
   const messaging = getMessaging(app);
@@ -338,9 +340,18 @@ const esc=s=>String(s||"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 $("googleBtn").onclick=async()=>{
 try{
 $("authStatus").textContent="Google login ho raha hai...";
+let result;
+if(Capacitor.isNativePlatform()){
+const nativeResult=await FirebaseAuthentication.signInWithGoogle();
+const idToken=nativeResult.credential?.idToken;
+if(!idToken)throw new Error("Google ID Token nahi mila");
+const credential=GoogleAuthProvider.credential(idToken);
+result=await signInWithCredential(auth,credential);
+}else{
 const provider=new GoogleAuthProvider();
 provider.setCustomParameters({prompt:"select_account"});
-const result=await signInWithPopup(auth,provider);
+result=await signInWithPopup(auth,provider);
+}
 $("authStatus").textContent="Login successful: "+result.user.email;
 }catch(e){
 $("authStatus").textContent="Login error: "+e.code+" - "+e.message;
