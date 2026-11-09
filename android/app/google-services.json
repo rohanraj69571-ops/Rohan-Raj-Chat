@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "565941235946",
+    "firebase_url": "https://rohan-raj-chat-85680-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "rohan-raj-chat-85680",
+    "storage_bucket": "rohan-raj-chat-85680.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:565941235946:android:67c3a76662f87cbb006793",
+        "android_client_info": {
+          "package_name": "com.rohanraj.chat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "565941235946-4p1sajml0im5o3m2helpo9ronfkv14l6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxS9jhQAGuV8UeYryDN0J-ttyEyBF2kWA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "565941235946-4p1sajml0im5o3m2helpo9ronfkv14l6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
