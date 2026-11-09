@@ -44,6 +44,11 @@ jobs:
           cd android
           ./gradlew assembleDebug
 
+      - name: Show SHA-1
+        run: |
+          cd android
+          ./gradlew signingReport
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
