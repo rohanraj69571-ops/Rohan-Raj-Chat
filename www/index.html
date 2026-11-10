@@ -8,8 +8,8 @@
   <link rel="manifest" href="/assets/manifest-CRbS4n2x.json">
 <meta name="theme-color" content="#10142b">
 <title>Rohan Raj Chat</title>
-<style>*{box-sizing:border-box}body{color:#f4f5ff;background:#0b1020;margin:0;font:15px Arial}header{background:#141a35;border-bottom:1px solid #30385f;align-items:center;gap:12px;padding:16px;display:flex}.logo{background:linear-gradient(135deg,#6d5dfc,#b34dff);border-radius:14px;place-items:center;width:48px;height:48px;font-size:22px;font-weight:700;display:grid}h1{margin:0;font-size:21px}main{max-width:950px;margin:18px auto;padding:0 12px}.panel{background:#141a35;border:1px solid #30385f;border-radius:15px;margin-bottom:14px;padding:16px}h2{margin:0 0 12px;font-size:18px}.muted{color:#adb5d9;font-size:13px;line-height:1.5}input{color:#fff;background:#0d1330;border:1px solid #414b78;border-radius:9px;width:100%;margin:6px 0 10px;padding:12px}button{color:#fff;background:#7665ff;border:0;border-radius:9px;margin:4px 3px 4px 0;padding:11px 14px;font-weight:700}.secondary{background:#30395f}.danger{background:#c83d58}.green{background:#16875e}.row{flex-wrap:wrap;gap:8px;display:flex}.row>*{flex:1;min-width:120px}.hidden{display:none!important}.columns{grid-template-columns:1fr 1.5fr;gap:14px;display:grid}.user{cursor:pointer;border-bottom:1px solid #30385f;padding:10px}#messages{background:#0d1330;border-radius:10px;height:320px;margin:10px 0;padding:10px;overflow:auto}.msg{overflow-wrap:anywhere;background:#293256;border-radius:12px;max-width:85%;margin:7px 0;padding:9px 12px}.mine{background:#594bd0;margin-left:auto}.msg small{color:#d1d4f1;margin-top:5px;font-size:10px;display:block}#status{color:#c4c9eb;margin:8px 0;font-size:13px}.callbox{background:#0d1330;border:1px solid #414b78;border-radius:12px;margin:12px 0;padding:12px}.callvideos{grid-template-columns:1fr 1fr;gap:8px;display:grid}.callvideos video{object-fit:cover;background:#050817;border-radius:10px;width:100%;min-height:120px}@media (width<=700px){.columns{grid-template-columns:1fr}#messages{height:270px}.callvideos{grid-template-columns:1fr}}</style>
-  <script type="module" crossorigin src="/assets/index-DDS6X2PK.js"></script>
+<style>*{box-sizing:border-box}body{color:#f4f5ff;background:#0b1020;margin:0;font:15px Arial}header{background:#141a35;border-bottom:1px solid #30385f;align-items:center;gap:12px;padding:16px;display:flex}.logo{background:linear-gradient(135deg,#6d5dfc,#b34dff);border-radius:14px;place-items:center;width:48px;height:48px;font-size:22px;font-weight:700;display:grid}h1{margin:0;font-size:21px}main{max-width:950px;margin:18px auto;padding:0 12px}.panel{background:#141a35;border:1px solid #30385f;border-radius:15px;margin-bottom:14px;padding:16px}h2{margin:0 0 12px;font-size:18px}.muted{color:#adb5d9;font-size:13px;line-height:1.5}input{color:#fff;background:#0d1330;border:1px solid #414b78;border-radius:9px;width:100%;margin:6px 0 10px;padding:12px}button{color:#fff;background:#7665ff;border:0;border-radius:9px;margin:4px 3px 4px 0;padding:11px 14px;font-weight:700}.secondary{background:#30395f}.danger{background:#c83d58}.green{background:#16875e}.row{flex-wrap:wrap;gap:8px;display:flex}.row>*{flex:1;min-width:120px}.hidden{display:none!important}.columns{grid-template-columns:1fr 1.5fr;gap:14px;display:grid}.user{cursor:pointer;border-bottom:1px solid #30385f;padding:10px}#messages{background:#0d1330;border-radius:10px;height:320px;margin:10px 0;padding:10px;overflow:auto}.msg{overflow-wrap:anywhere;background:#293256;border-radius:12px;max-width:85%;margin:7px 0;padding:9px 12px}.mine{background:#594bd0;margin-left:auto}.msg small{color:#d1d4f1;margin-top:5px;font-size:10px;display:block}#status{color:#c4c9eb;margin:8px 0;font-size:13px}.callbox{background:#0d1330;border:1px solid #414b78;border-radius:12px;margin:12px 0;padding:12px}.callvideos{grid-template-columns:1fr 1fr;gap:8px;display:grid}.callvideos video{object-fit:cover;background:#050817;border-radius:10px;width:100%;min-height:120px}@media (width<=700px){.columns{grid-template-columns:1fr}#messages{height:270px}.callvideos{grid-template-columns:1fr}}.group-panel{background:#141a35;border:1px solid #414b78;border-radius:12px;margin:12px 0;padding:14px}.group-member{border-bottom:1px solid #30385f;align-items:center;gap:10px;padding:10px;display:flex}.group-member input{width:20px;margin:0}.group-videos{grid-template-columns:repeat(2,1fr);gap:8px;display:grid}.group-videos video{object-fit:cover;background:#050817;border-radius:10px;width:100%;min-height:110px}</style>
+  <script type="module" crossorigin src="/assets/index-yl56ai6K.js"></script>
 </head>
 <body>
 <header>
@@ -113,6 +113,23 @@ Mera naam aur mobile number se mujhe search kiya ja sake (optional)
 </div>
 </div>
 
+<div id="groupCallPanel" class="group-panel">
+<h2>👥 Group Calling (Max 6)</h2>
+<p class="muted">Group call ke liye friends select karein.</p>
+<div id="groupMemberList"></div>
+<div id="groupIncomingBox" class="callbox hidden">
+<b id="groupIncomingText">Incoming group call</b>
+<button id="groupJoinBtn" class="green">Join Group Call</button>
+<button id="groupRejectBtn" class="danger">Reject</button>
+</div>
+<div class="row">
+<button id="groupAudioBtn" class="green">📞 Group Voice</button>
+<button id="groupVideoBtn">🎥 Group Video</button>
+</div>
+<div id="groupCallStatus" class="muted">Abhi koi group call nahi hai.</div>
+<div id="groupVideos" class="group-videos"></div>
+<button id="groupHangupBtn" class="danger hidden">End Group Call</button>
+</div>
 <div id="messages">
 <span class="muted">Left side se friend select karein.</span>
 </div>
@@ -128,3 +145,5 @@ Mera naam aur mobile number se mujhe search kiya ja sake (optional)
 
 </body>
 </html>
+
+

@@ -41,6 +41,13 @@ button{padding:11px 14px;margin:4px 3px 4px 0;border:0;border-radius:9px;backgro
 #messages{height:270px}
 .callvideos{grid-template-columns:1fr}
 }
+
+.group-panel{background:#141a35;border:1px solid #414b78;border-radius:12px;padding:14px;margin:12px 0}
+.group-member{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #30385f}
+.group-member input{width:20px;margin:0}
+.group-videos{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.group-videos video{width:100%;min-height:110px;background:#050817;border-radius:10px;object-fit:cover}
+
 </style>
 </head>
 <body>
@@ -145,6 +152,23 @@ Mera naam aur mobile number se mujhe search kiya ja sake (optional)
 </div>
 </div>
 
+<div id="groupCallPanel" class="group-panel">
+<h2>👥 Group Calling (Max 6)</h2>
+<p class="muted">Group call ke liye friends select karein.</p>
+<div id="groupMemberList"></div>
+<div id="groupIncomingBox" class="callbox hidden">
+<b id="groupIncomingText">Incoming group call</b>
+<button id="groupJoinBtn" class="green">Join Group Call</button>
+<button id="groupRejectBtn" class="danger">Reject</button>
+</div>
+<div class="row">
+<button id="groupAudioBtn" class="green">📞 Group Voice</button>
+<button id="groupVideoBtn">🎥 Group Video</button>
+</div>
+<div id="groupCallStatus" class="muted">Abhi koi group call nahi hai.</div>
+<div id="groupVideos" class="group-videos"></div>
+<button id="groupHangupBtn" class="danger hidden">End Group Call</button>
+</div>
 <div id="messages">
 <span class="muted">Left side se friend select karein.</span>
 </div>
@@ -167,7 +191,7 @@ getAuth,initializeAuth,indexedDBLocalPersistence,signInWithCredential,GoogleAuth
 createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut
 }from"firebase/auth";
 import{
-getFirestore,doc,getDoc,setDoc,deleteDoc,collection,getDocs,
+getFirestore,doc,getDoc,setDoc,deleteDoc,collection,getDocs,arrayUnion,arrayRemove,runTransaction,
 query,where,addDoc,onSnapshot,orderBy,serverTimestamp,updateDoc
 }from"firebase/firestore";
 import {
@@ -284,6 +308,17 @@ let stopCall=null,stopCandidates=null;
 let pc=null,localStream=null,remoteStream=null;
 let activeCallId=null,incomingCall=null;
 let isCaller=false,callType="audio";
+
+// Group Calling variables
+let groupRoomId=null;
+let groupLocalStream=null;
+let groupPeers=new Map();
+let groupListeners=[];
+let groupRoomData=null;
+let groupJoining=false;
+let groupRoomStop=null;
+let groupEnding=false;
+let groupLocalTile=null;
 let pendingCandidates=[],seenCandidates=new Set();
 let remoteDescriptionReady=false,endingCall=false;
 
@@ -426,33 +461,511 @@ say("Profile save ho gaya.");
 }catch(e){say(e.message)}
 }
 
+
+
+// ===== GROUP WEBRTC PEER CONNECTION =====
+function makeGroupTile(uid,name,isLocal=false){
+  let tile=document.createElement("div");
+  tile.className="group-tile";
+  tile.style.cssText="background:#141a35;border:1px solid #414b78;border-radius:10px;padding:8px;min-width:0;";
+  let title=document.createElement("b");
+  title.textContent=name||"Friend";
+  let video=document.createElement("video");
+  video.autoplay=true;
+  video.playsInline=true;
+  video.muted=true;
+  video.style.cssText="width:100%;min-height:110px;background:#050817;border-radius:8px;object-fit:cover;";
+  video.style.display=groupRoomData?.type==="video"?"block":"none";
+  tile.append(title,video);
+  if(!isLocal){
+    let audio=document.createElement("audio");
+    audio.autoplay=true;
+    audio.style.display="none";
+    tile.append(audio);
+    $("groupVideos").appendChild(tile);
+    return {tile,video,audio};
+  }
+  $("groupVideos").appendChild(tile);
+  return {tile,video,audio:null};
+}
+
+async function flushGroupCandidates(peer){
+  if(!peer.pc.remoteDescription)return;
+  let pending=peer.pendingRemoteCandidates.splice(0);
+  for(let c of pending){
+    try{await peer.pc.addIceCandidate(new RTCIceCandidate(c));}
+    catch(e){console.warn("Group ICE candidate:",e);}
+  }
+}
+
+async function receiveGroupCandidates(peer,list){
+  for(let c of (list||[])){
+    let key=[c.candidate,c.sdpMid,c.sdpMLineIndex].join("|");
+    if(peer.seenRemoteCandidates.has(key))continue;
+    peer.seenRemoteCandidates.add(key);
+    if(peer.pc.remoteDescription){
+      try{await peer.pc.addIceCandidate(new RTCIceCandidate(c));}
+      catch(e){console.warn("Group remote ICE:",e);}
+    }else{
+      peer.pendingRemoteCandidates.push(c);
+    }
+  }
+}
+
+async function cleanupGroupMedia(){
+  groupPeers.forEach(peer=>{
+    try{if(peer.stopDoc)peer.stopDoc();}catch(e){}
+    try{if(peer.stopCandidates)peer.stopCandidates();}catch(e){}
+    try{peer.pc.close();}catch(e){}
+    try{if(peer.tile?.tile)peer.tile.tile.remove();}catch(e){}
+  });
+  groupPeers.clear();
+
+  if(groupLocalStream){
+    groupLocalStream.getTracks().forEach(track=>track.stop());
+    groupLocalStream=null;
+  }
+
+  if(groupLocalTile?.tile)groupLocalTile.tile.remove();
+  groupLocalTile=null;
+
+  try{
+    if(groupRoomStop)groupRoomStop();
+  }catch(e){}
+  groupRoomStop=null;
+  groupEnding=false;
+
+  try{
+    if(Capacitor.isNativePlatform()){
+      await CallBackground.stop();
+    }
+  }catch(e){
+    console.warn("Group background cleanup:",e);
+  }
+}
+
+async function makeGroupPeer(remoteUid){
+  if(groupPeers.has(remoteUid))return groupPeers.get(remoteUid);
+  if(!groupLocalStream||!groupRoomId||!me)return;
+
+  let caller=me.uid.localeCompare(remoteUid)<0;
+  let pairId=[me.uid,remoteUid].sort().join("__");
+  let pairRef=doc(db,"groupCalls",groupRoomId,"connections",pairId);
+
+  let peer={
+    pc:new RTCPeerConnection({
+      iceServers:[
+        {urls:"stun:stun.l.google.com:19302"},
+        {urls:"stun:stun1.l.google.com:19302"}
+      ]
+    }),
+    caller,
+    pairRef,
+    stream:new MediaStream(),
+    pendingRemoteCandidates:[],
+    seenRemoteCandidates:new Set(),
+    stopDoc:null,
+    stopCandidates:null,
+    tile:null,
+    offerStarted:false,
+    answerSent:false
+  };
+
+  groupPeers.set(remoteUid,peer);
+
+  let remoteName=groupRoomData?.memberNames?.[remoteUid]||"Friend";
+  peer.tile=makeGroupTile(remoteUid,remoteName,false);
+
+  groupLocalStream.getTracks().forEach(track=>{
+    peer.pc.addTrack(track,groupLocalStream);
+  });
+
+  peer.pc.ontrack=e=>{
+    let tracks=e.streams?.[0]?.getTracks()||[e.track];
+    tracks.forEach(track=>{
+      if(!peer.stream.getTracks().some(t=>t.id===track.id)){
+        peer.stream.addTrack(track);
+      }
+    });
+    peer.tile.video.srcObject=peer.stream;
+    if(peer.tile.audio)peer.tile.audio.srcObject=peer.stream;
+    peer.tile.video.play().catch(()=>{});
+    if(peer.tile.audio)peer.tile.audio.play().catch(()=>{});
+  };
+
+  let localField=caller?"callerCandidates":"calleeCandidates";
+  let remoteField=caller?"calleeCandidates":"callerCandidates";
+
+  peer.pc.onicecandidate=async e=>{
+    if(!e.candidate)return;
+    try{
+      await addDoc(
+        collection(db,"groupCalls",groupRoomId,"connections",pairId,localField),
+        {...e.candidate.toJSON(),uid:me.uid,createdAt:serverTimestamp()}
+      );
+    }catch(err){
+      console.warn("Group ICE send:",err);
+    }
+  };
+
+  peer.pc.onconnectionstatechange=()=>{
+    $("groupCallStatus").textContent=
+      "Group Call: "+peer.pc.connectionState;
+  };
+
+  peer.stopCandidates=onSnapshot(
+    collection(db,"groupCalls",groupRoomId,"connections",pairId,remoteField),
+    snap=>{
+      snap.docChanges().forEach(change=>{
+        if(change.type==="added"){
+          receiveGroupCandidates(peer,[change.doc.data()]);
+        }
+      });
+    },
+    err=>console.error("Group candidate listener:",err)
+  );
+
+  peer.stopDoc=onSnapshot(peer.pairRef,async snap=>{
+    if(!snap.exists())return;
+    let data=snap.data();
+
+    try{
+      if(caller&&data.answer&&!peer.pc.remoteDescription){
+        await peer.pc.setRemoteDescription(data.answer);
+        await flushGroupCandidates(peer);
+      }
+
+      if(!caller&&data.offer&&!peer.pc.remoteDescription&&!peer.answerSent){
+        await peer.pc.setRemoteDescription(data.offer);
+        await flushGroupCandidates(peer);
+
+        let answer=await peer.pc.createAnswer();
+        await peer.pc.setLocalDescription(answer);
+        peer.answerSent=true;
+
+        await updateDoc(peer.pairRef,{
+          answer:{type:answer.type,sdp:answer.sdp}
+        });
+      }
+    }catch(err){
+      console.error("Group signaling:",err);
+      say("Group connection error: "+err.message);
+    }
+  },err=>console.error("Group peer listener:",err));
+
+  if(caller){
+    let existing=await getDoc(pairRef);
+
+    if(!existing.exists()){
+      await setDoc(pairRef,{
+        callerUid:me.uid,
+        calleeUid:remoteUid,
+        createdAt:serverTimestamp()
+      });
+    }
+
+    if(!peer.offerStarted){
+      peer.offerStarted=true;
+      let offer=await peer.pc.createOffer();
+      await peer.pc.setLocalDescription(offer);
+
+      await updateDoc(pairRef,{
+        offer:{type:offer.type,sdp:offer.sdp}
+      });
+    }
+  }
+
+  return peer;
+}
+
+// ===== END GROUP WEBRTC PEER CONNECTION =====
+
+// ===== GROUP CALL ROOM AND INVITATIONS =====
+
+async function startGroupMedia(type){
+  if(!groupRoomId||!me)throw new Error("Group room nahi mila.");
+
+  if(groupLocalStream)return;
+
+  groupLocalStream=await navigator.mediaDevices.getUserMedia({
+    audio:true,
+    video:type==="video"
+  });
+
+  groupLocalTile=makeGroupTile(me.uid,"You",true);
+  groupLocalTile.video.srcObject=groupLocalStream;
+  groupLocalTile.video.muted=true;
+  groupLocalTile.video.play().catch(()=>{});
+
+  if(Capacitor.isNativePlatform()){
+    await CallBackground.start({callType:type});
+  }
+
+  $("groupCallStatus").textContent=
+    type==="video"?"Group video call connecting...":"Group voice call connecting...";
+
+  let roomRef=doc(db,"groupCalls",groupRoomId);
+
+  groupRoomStop=onSnapshot(roomRef,async snap=>{
+    if(!snap.exists())return;
+
+    let data=snap.data();
+    groupRoomData={id:snap.id,...data};
+
+    if(data.status==="ended"){
+      await cleanupGroupMedia();
+      groupRoomId=null;
+      groupRoomData=null;
+      $("groupHangupBtn").classList.add("hidden");
+      $("groupCallStatus").textContent="Group call host ne band kar di.";
+      return;
+    }
+
+    let participants=data.participants||[];
+
+    for(let [uid,peer] of groupPeers){
+      if(!participants.includes(uid)){
+        try{if(peer.stopDoc)peer.stopDoc();}catch(e){}
+        try{if(peer.stopCandidates)peer.stopCandidates();}catch(e){}
+        try{peer.pc.close();}catch(e){}
+        try{peer.tile?.tile?.remove();}catch(e){}
+        groupPeers.delete(uid);
+      }
+    }
+
+    for(let uid of participants){
+      if(uid!==me.uid){
+        try{await makeGroupPeer(uid);}
+        catch(e){
+          console.error("Group peer start:",e);
+          say("Group connection error: "+e.message);
+        }
+      }
+    }
+  },e=>{
+    console.error("Group room listener:",e);
+    say("Group room error: "+e.message);
+  });
+}
+
+async function createGroupCall(type){
+  try{
+    if(!me){alert("Pehle login karein.");return;}
+    if(groupRoomId){alert("Aap pehle se group call mein hain.");return;}
+
+    let selected=Array.from((window.groupSelectedUsers||new Map()).keys());
+    if(selected.length<1||selected.length>5){
+      alert("1 se 5 friends select karein.");
+      return;
+    }
+
+    let members=[...new Set([me.uid,...selected])];
+    let room=await addDoc(collection(db,"groupCalls"),{
+      hostUid:me.uid,
+      memberUids:members,
+      participants:[me.uid],
+      declinedUids:[],
+      type:type,
+      status:"ringing",
+      createdAt:serverTimestamp(),
+      updatedAt:serverTimestamp()
+    });
+
+    groupRoomId=room.id;
+    groupRoomData={
+      id:room.id,hostUid:me.uid,
+      memberUids:members,participants:[me.uid],
+      type:type,status:"ringing"
+    };
+
+    $("groupHangupBtn").classList.remove("hidden");
+    await startGroupMedia(type);
+
+    $("groupCallStatus").textContent=
+      "Group "+type+" call shuru. Friends ke join hone ka intezar hai.";
+  }catch(e){
+    console.error(e);
+    alert("Group call error: "+e.message);
+    if(groupRoomId){
+      try{await updateDoc(doc(db,"groupCalls",groupRoomId),{status:"ended"});}catch(x){}
+      await cleanupGroupMedia();
+      groupRoomId=null;
+      groupRoomData=null;
+      $("groupHangupBtn").classList.add("hidden");
+    }
+  }
+}
+
+function listenForGroupCalls(){
+  groupListeners.forEach(fn=>{try{fn()}catch(e){}});
+  groupListeners=[];
+
+  if(!me)return;
+
+  let q=query(
+    collection(db,"groupCalls"),
+    where("memberUids","array-contains",me.uid)
+  );
+
+  let stop=onSnapshot(q,ss=>{
+    let pending=ss.docs.find(d=>{
+      let data=d.data();
+      return data.hostUid!==me.uid &&
+        data.status!=="ended" &&
+        !(data.participants||[]).includes(me.uid);
+    });
+
+    if(pending&&!groupRoomId){
+      let data=pending.data();
+      groupRoomData={id:pending.id,...data};
+      $("groupIncomingText").textContent=
+        (data.type==="video"?"Video":"Voice")+" group call aa rahi hai";
+      $("groupIncomingBox").classList.remove("hidden");
+    }else if(groupRoomData&&!groupRoomId){
+      let still=ss.docs.some(d=>
+        d.id===groupRoomData.id &&
+        d.data().status!=="ended" &&
+        !(d.data().participants||[]).includes(me.uid)
+      );
+      if(!still){
+        groupRoomData=null;
+        $("groupIncomingBox").classList.add("hidden");
+      }
+    }
+  },e=>{
+    console.error("Group invitation listener:",e);
+    say("Group invitation error: "+e.message);
+  });
+
+  groupListeners.push(stop);
+}
+
+async function joinGroupCall(){
+  try{
+    if(!groupRoomData||!me)return;
+    let roomId=groupRoomData.id;
+    let room=doc(db,"groupCalls",roomId);
+    let type=groupRoomData.type||"audio";
+
+    await runTransaction(db,async tx=>{
+      let snap=await tx.get(room);
+      if(!snap.exists())throw new Error("Group call ab available nahi hai.");
+      let data=snap.data();
+      if(data.status==="ended")throw new Error("Group call band ho chuki hai.");
+      if(!data.memberUids.includes(me.uid))throw new Error("Aap invited member nahi hain.");
+      if(!data.participants.includes(me.uid)&&data.participants.length>=6)throw new Error("Maximum 6 log.");
+      tx.update(room,{
+        participants:arrayUnion(me.uid),
+        status:"active",
+        updatedAt:serverTimestamp()
+      });
+    });
+
+    groupRoomId=roomId;
+    $("groupIncomingBox").classList.add("hidden");
+    $("groupHangupBtn").classList.remove("hidden");
+    await startGroupMedia(type);
+  }catch(e){
+    alert("Join error: "+e.message);
+  }
+}
+async function rejectGroupCall(){
+  try{
+    if(!groupRoomData||!me)return;
+
+    await updateDoc(doc(db,"groupCalls",groupRoomData.id),{
+      declinedUids:arrayUnion(me.uid),
+      updatedAt:serverTimestamp()
+    });
+
+    $("groupIncomingBox").classList.add("hidden");
+    groupRoomData=null;
+  }catch(e){
+    say("Reject error: "+e.message);
+  }
+}
+
+async function endGroupCall(){
+  try{
+    if(!groupRoomId)return;
+
+    let id=groupRoomId;
+    let host=groupRoomData?.hostUid===me.uid;
+    groupEnding=true;
+
+    let room=doc(db,"groupCalls",id);
+
+    if(host){
+      await updateDoc(room,{
+        status:"ended",
+        updatedAt:serverTimestamp()
+      });
+    }else{
+      await updateDoc(room,{
+        participants:arrayRemove(me.uid),
+        updatedAt:serverTimestamp()
+      });
+    }
+
+    await cleanupGroupMedia();
+    groupRoomId=null;
+    groupRoomData=null;
+    $("groupHangupBtn").classList.add("hidden");
+    $("groupCallStatus").textContent="Group call band ho gayi.";
+
+  }catch(e){
+    groupEnding=false;
+    alert("Group call end error: "+e.message);
+  }
+}
+
+$("groupAudioBtn").onclick=()=>createGroupCall("audio");
+$("groupVideoBtn").onclick=()=>createGroupCall("video");
+$("groupJoinBtn").onclick=()=>joinGroupCall();
+$("groupRejectBtn").onclick=()=>rejectGroupCall();
+$("groupHangupBtn").onclick=()=>endGroupCall();
+
+// ===== END GROUP CALL ROOM CODE =====
+
 function addResult(box,u){
 let el=document.createElement("div");
 el.className="user";
-
 let name=esc(u.name||"Chat user");
-
 el.innerHTML=`
 <b>${name}</b>
 <span id="status-${u.uid}" style="color:gray;font-size:12px;">Checking...</span>
+<br>
+<label><input type="checkbox" class="group-select" style="width:18px">
+Group mein jodein</label>
 <br><button>Message</button>
 `;
-
+window.groupSelectedUsers=window.groupSelectedUsers||new Map();
+let groupCheck=el.querySelector(".group-select");
+groupCheck.checked=window.groupSelectedUsers.has(u.uid);
+groupCheck.onchange=()=>{
+if(groupCheck.checked){
+if(window.groupSelectedUsers.size>=5){
+groupCheck.checked=false;
+alert("Maximum 5 friends chun sakte hain.");
+return;
+}
+window.groupSelectedUsers.set(u.uid,{uid:u.uid,name:u.name||"Friend"});
+}else{
+window.groupSelectedUsers.delete(u.uid);
+}
+$("groupCallStatus").textContent=window.groupSelectedUsers.size+" friends selected. Maximum 6 log.";
+};
 el.querySelector("button").onclick=()=>openChat(u.uid,u.name||"Friend");
 box.appendChild(el);
-
 let statusRef=ref(rtdb,"status/"+u.uid);
-
 onValue(statusRef,s=>{
 let statusEl=$("status-"+u.uid);
 if(!statusEl)return;
-
 let online=s.exists()&&s.val().state==="online";
 statusEl.textContent=online?"● Online":"● Offline";
 statusEl.style.color=online?"green":"gray";
 });
 }
-
 async function searchFriends(){
 let t=$("searchInput").value.trim();
 let box=$("searchResults");
@@ -851,6 +1364,7 @@ $("myName").value=s.exists()?s.data().name||u.displayName||"":u.displayName||"";
 $("discoverable").checked=s.exists()&&!!s.data().discoverable;
 loadChats();
 listenForCalls();
+        listenForGroupCalls();
 }catch(e){say(e.message)}
 }else{
 $("auth").classList.remove("hidden");
@@ -864,3 +1378,5 @@ await cleanupCall();
 </script>
 </body>
 </html>
+
+
