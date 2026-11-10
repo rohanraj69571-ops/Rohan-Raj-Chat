@@ -191,6 +191,7 @@ messagingSenderId:"565941235946",
 appId:"1:565941235946:web:295176ef9255e085006793"
 };
 
+const CallBackground = Capacitor.registerPlugin("CallBackground");
 const app=initializeApp(config);
 const auth=Capacitor.isNativePlatform()?initializeAuth(app,{persistence:indexedDBLocalPersistence}):getAuth(app);
 const db=getFirestore(app);
@@ -668,6 +669,7 @@ $("callStatus").textContent="Camera/microphone permission maangi ja rahi hai..."
 localStream=await navigator.mediaDevices.getUserMedia({
 audio:true,video:type==="video"
 });
+if(Capacitor.isNativePlatform()) await CallBackground.start({callType:type});
 $("localVideo").srcObject=localStream;
 makePeer();
 localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
@@ -737,6 +739,7 @@ $("incomingBox").classList.add("hidden");
 localStream=await navigator.mediaDevices.getUserMedia({
 audio:true,video:callType==="video"
 });
+if(Capacitor.isNativePlatform()) await CallBackground.start({callType:callType});
 $("localVideo").srcObject=localStream;
 makePeer();
 localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
@@ -791,6 +794,7 @@ await cleanupCall();
 
 async function cleanupCall(){
 stopRingtone();
+if(Capacitor.isNativePlatform()){try{await CallBackground.stop();}catch(e){console.warn("Call service stop:",e);}}
 if(stopCall){stopCall();stopCall=null}
 if(stopCandidates){stopCandidates();stopCandidates=null}
 if(pc){pc.onicecandidate=null;pc.close();pc=null}
