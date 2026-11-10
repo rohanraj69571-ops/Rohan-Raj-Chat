@@ -1372,6 +1372,10 @@ $("app").classList.add("hidden");
 if(stopChats){stopChats();stopChats=null}
 if(stopMessages){stopMessages();stopMessages=null}
 if(stopIncoming){stopIncoming();stopIncoming=null}
+groupListeners.forEach(fn=>{try{fn()}catch(e){}});
+groupListeners=[];
+groupRoomData=null;
+$("groupIncomingBox").classList.add("hidden");
 await cleanupCall();
 }
 });
