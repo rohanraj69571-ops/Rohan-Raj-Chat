@@ -297,7 +297,12 @@ const app=initializeApp(config);
 const auth=Capacitor.isNativePlatform()?initializeAuth(app,{persistence:indexedDBLocalPersistence}):getAuth(app);
 const db=getFirestore(app);
   const rtdb=getDatabase(app);
-  const messaging = getMessaging(app);
+  let messaging = null;
+try {
+  if (!Capacitor.isNativePlatform()) messaging = getMessaging(app);
+} catch (e) {
+  console.warn("Firebase Messaging unavailable:", e);
+}
   
 let fcmToken = null;
 
@@ -345,11 +350,13 @@ async function enableNotifications() {
 
 window.enableNotifications = enableNotifications;
 
-onMessage(messaging, (payload) => {
-  const title = payload.notification?.title || "Rohan Raj Chat";
-  const body = payload.notification?.body || "Naya message aaya hai.";
-  alert(title + "\n" + body);
-});
+if (messaging) {
+  onMessage(messaging, (payload) => {
+    const title = payload.notification?.title || "Rohan Raj Chat";
+    const body = payload.notification?.body || "Naya message aaya hai.";
+    alert(title + "\n" + body);
+  });
+}
 const $=id=>document.getElementById(id);
 
 let me=null,activeChat=null,activeFriend=null,activeChatMode="private";
