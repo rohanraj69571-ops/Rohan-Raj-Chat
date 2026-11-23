@@ -1103,13 +1103,10 @@ async function openChat(other,name){
 try{
 let id=cid(me.uid,other);
 let r=doc(db,"chats",id);
-let s=await getDoc(r);
-if(!s.exists()){
 await setDoc(r,{
-participants:[me.uid,other].sort(),lastMessage:"",
-createdAt:serverTimestamp(),updatedAt:serverTimestamp()
-});
-}
+participants:[me.uid,other].sort(),
+updatedAt:serverTimestamp()
+},{merge:true});
 activeChat=id;
 activeFriend={uid:other,name};
 if(!$("backToChats")){
