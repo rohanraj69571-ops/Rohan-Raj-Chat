@@ -65,6 +65,7 @@ main{margin:8px auto;padding:0 8px}
 #app .columns>section{margin-bottom:8px}
 #messages{height:55vh;min-height:250px}
 body.mobile-chat-open #app .columns>section:first-child{display:none}
+body.mobile-chat-open #topSearchPanel{display:none!important}
 body.mobile-chat-open #app .columns>section:last-child{display:block}
 body.mobile-list-open #app .columns>section:first-child{display:block}
 body.mobile-list-open #app .columns>section:last-child{display:none}
@@ -139,9 +140,6 @@ onclick="document.getElementById('topMenu').classList.toggle('hidden')">⋮</but
 </div>
 
 <div id="app" class="hidden">
-<div class="panel">
-
-</div>
 <div class="panel hidden" id="profilePanel">
 <div class="row" style="align-items:center">
 <h2>My Profile</h2>
@@ -492,6 +490,8 @@ $("profileClose").classList.remove("hidden");
 $("profilePanel").querySelector(".row h2").textContent="My Profile";
 $("topSearchPanel").classList.remove("hidden");
 document.querySelector("#app .columns").classList.remove("hidden");
+document.body.classList.add("mobile-list-open");
+document.body.classList.remove("mobile-chat-open");
 loadChats();
 listenForCalls();
 listenForGroupCalls();
@@ -1666,6 +1666,8 @@ $("profileClose").classList.remove("hidden");
 profileHeading.textContent="My Profile";
 $("topSearchPanel").classList.remove("hidden");
 document.querySelector("#app .columns").classList.remove("hidden");
+document.body.classList.add("mobile-list-open");
+document.body.classList.remove("mobile-chat-open");
 loadChats();
 listenForCalls();
 listenForGroupCalls();
