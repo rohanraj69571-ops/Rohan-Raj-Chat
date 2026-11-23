@@ -15,6 +15,38 @@
       },
       "oauth_client": [
         {
+          "client_id": "565941235946-0e311fn0b7t7nn8aut7g4at177u295sf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rohanraj.chat",
+            "certificate_hash": "aa0f598da19b4593812d2d7d25c8d1ce3efe1846"
+          }
+        },
+        {
+          "client_id": "565941235946-bup1k57gooi911658nhq1inifqbticrd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rohanraj.chat",
+            "certificate_hash": "8e6b6a30d7fe8255205933d6a9a4457ea8da6660"
+          }
+        },
+        {
+          "client_id": "565941235946-u78rjcaf32omm80ho7acie6qa963rv7n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rohanraj.chat",
+            "certificate_hash": "080a43f75beb833ba2ca46ab3777346dd7bd7316"
+          }
+        },
+        {
+          "client_id": "565941235946-u7gh0d6q2qc3nodkj422i96kp87ct7sm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.rohanraj.chat",
+            "certificate_hash": "a8a515640ea2da34cc396f8737428dd5994566ac"
+          }
+        },
+        {
           "client_id": "565941235946-4p1sajml0im5o3m2helpo9ronfkv14l6.apps.googleusercontent.com",
           "client_type": 3
         }
