@@ -49,6 +49,55 @@ button{padding:11px 14px;margin:4px 3px 4px 0;border:0;border-radius:9px;backgro
 .group-videos{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .group-videos video{width:100%;min-height:110px;background:#050817;border-radius:10px;object-fit:cover}
 
+
+/* WhatsApp style layout */
+#app{max-width:1100px;margin:auto}
+#app .columns{grid-template-columns:320px 1fr;gap:12px}
+#app .columns>section{min-width:0}
+#chatList .user{display:flex;flex-direction:column;padding:15px;border-radius:10px}
+#searchInput{border-radius:25px;padding:14px}
+#searchBtn{border-radius:20px}
+#messages{height:55vh;min-height:280px}
+#chatTitle{font-size:20px}
+@media(max-width:700px){
+main{margin:8px auto;padding:0 8px}
+#app .columns{display:grid;grid-template-columns:1fr}
+#app .columns>section{margin-bottom:8px}
+#messages{height:55vh;min-height:250px}
+body.mobile-chat-open #app .columns>section:first-child{display:none}
+body.mobile-chat-open #app .columns>section:last-child{display:block}
+body.mobile-list-open #app .columns>section:first-child{display:block}
+body.mobile-list-open #app .columns>section:last-child{display:none}
+}
+
+#backToChats{display:none}
+@media(max-width:700px){
+#backToChats{display:inline-block}
+}
+
+/* WhatsApp style friend list */
+#chatList .user{
+display:flex;align-items:center;gap:12px;
+padding:12px 8px;min-height:74px;
+border-bottom:1px solid #30385f;cursor:pointer;
+}
+#chatList .user-avatar{
+width:52px;height:52px;min-width:52px;
+border-radius:50%;overflow:hidden;
+display:grid;place-items:center;
+background:linear-gradient(135deg,#6d5dfc,#b34dff);
+color:white;font-size:19px;font-weight:bold;
+}
+#chatList .user-avatar img{
+width:100%;height:100%;object-fit:cover;border-radius:50%;
+}
+#chatList .user-info{flex:1;min-width:0}
+#chatList .user-name{display:block;font-size:16px;margin-bottom:5px}
+#chatList .user-last{
+white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#chatList .user:hover{background:#20294b;border-radius:10px}
+
 </style>
 </head>
 <body>
@@ -57,6 +106,19 @@ button{padding:11px 14px;margin:4px 3px 4px 0;border:0;border-radius:9px;backgro
 <div>
 <h1>Rohan Raj Chat</h1>
 <span class="muted">Private messaging • Voice & Video Calls</span>
+</div>
+<div style="margin-left:auto;position:relative">
+<button id="menuToggle" class="secondary" style="font-size:22px;padding:6px 13px"
+onclick="document.getElementById('topMenu').classList.toggle('hidden')">⋮</button>
+<div id="topMenu" class="panel hidden" style="position:absolute;right:0;top:48px;z-index:100;width:215px;max-height:75vh;overflow-y:auto;padding:10px">
+<button class="secondary" style="width:100%" onclick="if(document.getElementById('app').classList.contains('hidden')){alert('Pehle login karein.')}else{document.getElementById('topSearchPanel').classList.remove('hidden');document.getElementById('searchInput').focus()}document.getElementById('topMenu').classList.add('hidden')">🔍 Add Friend</button>
+<button class="secondary" style="width:100%" onclick="document.getElementById('groupChatPanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">👥 New Group Chat</button>
+<button class="secondary" style="width:100%" onclick="document.getElementById('groupCallPanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">📞 Group Voice Call</button>
+<button class="secondary" style="width:100%" onclick="document.getElementById('groupCallPanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">🎥 Group Video Call</button>
+<button class="secondary" style="width:100%" onclick="document.getElementById('profilePanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">👤 Profile</button>
+<button class="secondary" style="width:100%" onclick="document.getElementById('topMenu').classList.add('hidden');window.enableNotifications()">🔔 Notifications</button>
+<button id="logoutBtn" class="danger" style="width:100%">Logout</button>
+</div>
 </div>
 </header>
 
@@ -72,21 +134,19 @@ button{padding:11px 14px;margin:4px 3px 4px 0;border:0;border-radius:9px;backgro
 <button class="secondary" id="loginBtn">Login</button>
 <div id="authStatus" class="muted"></div>
 
-<button id="notificationBtn" class="secondary"
-onclick="enableNotifications()">
-🔔 Notification ON करें
-</button>
+
 
 </div>
 
 <div id="app" class="hidden">
 <div class="panel">
-<button id="notificationBtn2" class="secondary"
-onclick="enableNotifications()">
-🔔 Notification ON करें
-</button>
+
 </div>
-<div class="panel">
+<div class="panel hidden" id="profilePanel">
+<div class="row" style="align-items:center">
+<h2>My Profile</h2>
+<button id="profileClose" class="secondary" onclick="document.getElementById('profilePanel').classList.add('hidden')">✕ Close</button>
+</div>
 <div class="row">
 <div>
 <h2 id="welcome">Welcome</h2>
@@ -94,13 +154,12 @@ onclick="enableNotifications()">
 style="width:80px;height:80px;border-radius:50%;object-fit:cover;display:none;">
 <div id="myEmail" class="muted"></div>
 </div>
-<button class="secondary" id="logoutBtn">Logout</button>
 </div>
 <div class="row">
 <div class="muted">Your name
 <input id="myName" placeholder="Apna naam">
 </div>
-<div class="muted">Mobile number (OTP nahi aayega)
+<div class="muted">Mobile number
 <input id="myPhone" inputmode="tel" placeholder="10 digit mobile number">
 </div>
 </div>
@@ -110,16 +169,22 @@ Mera naam aur mobile number se mujhe search kiya ja sake (optional)
 </label>
 <br>
 <button id="saveProfile">Save profile</button>
-<p class="muted">Mobile number verify nahi hoga. Sirf apna number dein.</p>
+<button id="profileNext" class="green hidden">Next</button>
+
+</div>
+
+<div class="panel" id="topSearchPanel">
+<div style="display:flex;align-items:center;gap:8px">
+<input id="searchInput" placeholder="🔍 Search name or phone number"
+style="flex:1;width:100%;border-radius:30px;background:#f1f1f1;color:#222;padding:15px 20px">
+<button id="searchBtn" class="secondary" style="border-radius:50%;padding:12px">🔍</button>
+</div>
+<div id="searchResults"></div>
 </div>
 
 <div class="columns">
 <section class="panel">
-<h2>Friends dhoondhein</h2>
-<input id="searchInput" placeholder="Naam ya mobile number">
-<button id="searchBtn">Search</button>
-<div id="searchResults"></div>
-<h2 style="margin-top:18px">Your chats</h2>
+<h2 style="margin-top:10px">Your chats</h2>
 <div id="chatList"></div>
 </section>
 
@@ -153,7 +218,7 @@ Mera naam aur mobile number se mujhe search kiya ja sake (optional)
 </div>
 </div>
 
-<div id="groupCallPanel" class="group-panel">
+<div id="groupCallPanel" class="group-panel hidden">
 <h2>👥 Group Calling (Max 6)</h2>
 <p class="muted">Group call ke liye friends select karein.</p>
 <div id="groupMemberList"></div>
@@ -169,6 +234,17 @@ Mera naam aur mobile number se mujhe search kiya ja sake (optional)
 <div id="groupCallStatus" class="muted">Abhi koi group call nahi hai.</div>
 <div id="groupVideos" class="group-videos"></div>
 <button id="groupHangupBtn" class="danger hidden">End Group Call</button>
+</div>
+
+<div id="groupChatPanel" class="group-panel hidden">
+<h2>👥 New Group Chat</h2>
+<p class="muted">Aap samet maximum 100 members.</p>
+<input id="newGroupName" placeholder="Group ka naam likhein" maxlength="60">
+<input id="groupFriendSearch" placeholder="Friend ka naam search karein" maxlength="60">
+<div id="groupFriendResults"></div>
+<p id="groupChatSelectionStatus" class="muted">0 friends selected. Kam se kam 1 friend chunein.</p>
+<button id="createGroupChatBtn" class="green">Create Group</button>
+<button id="closeGroupChatBtn" class="secondary">Cancel</button>
 </div>
 <div id="messages">
 <span class="muted">Left side se friend select karein.</span>
@@ -276,7 +352,7 @@ onMessage(messaging, (payload) => {
 });
 const $=id=>document.getElementById(id);
 
-let me=null,activeChat=null,activeFriend=null;
+let me=null,activeChat=null,activeFriend=null,activeChatMode="private";
 let stopPresence=null;
 
 function setupPresence(uid){
@@ -407,8 +483,28 @@ $("authStatus").textContent="Logout successful. Ab doosra Google account chun sa
 }catch(e){$("authStatus").textContent="Logout error: "+e.message;}
 };
 $("saveProfile").onclick=saveProfile;
+$("profileNext").onclick=async()=>{
+let ok=await saveProfile();
+if(!ok)return;
+$("profilePanel").classList.add("hidden");
+$("profileNext").classList.add("hidden");
+$("profileClose").classList.remove("hidden");
+$("profilePanel").querySelector(".row h2").textContent="My Profile";
+$("topSearchPanel").classList.remove("hidden");
+document.querySelector("#app .columns").classList.remove("hidden");
+loadChats();
+listenForCalls();
+listenForGroupCalls();
+};
 $("searchBtn").onclick=searchFriends;
 $("sendBtn").onclick=sendMessage;
+$("createGroupChatBtn").onclick=createGroupChat;
+$("closeGroupChatBtn").onclick=()=>$("groupChatPanel").classList.add("hidden");
+$("groupFriendSearch").addEventListener("input",showGroupChatFriends);
+$("newGroupName").addEventListener("focus",()=>{
+if(!window.groupChatAllUsers)renderGroupChatFriends();
+});
+
 $("audioCallBtn").onclick=()=>startCall("audio");
 $("videoCallBtn").onclick=()=>startCall("video");
 $("acceptBtn").onclick=acceptCall;
@@ -431,7 +527,7 @@ if(p&&p.length!==10)throw Error("10 digit Indian mobile number likhein.");
 
 let old=await getDoc(doc(db,"users",me.uid));
 let oldHash=old.exists()?old.data().phoneHash:null;
-let newHash=p?await hash(p):null;
+let newHash=p?await hash(p):(oldHash||null);
 
 await setDoc(doc(db,"users",me.uid),{
 uid:me.uid,name,email:me.email||"",photo:me.photoURL||"",
@@ -443,7 +539,7 @@ uid:me.uid,name,photo:me.photoURL||"",
 discoverable:yes,updatedAt:serverTimestamp()
 });
 
-if(oldHash&&oldHash!==newHash){
+if(oldHash&&p&&oldHash!==newHash){
 let r=doc(db,"phoneDirectory",oldHash);
 let s=await getDoc(r);
 if(s.exists()&&s.data().uid===me.uid)await deleteDoc(r);
@@ -453,16 +549,15 @@ await setDoc(doc(db,"phoneDirectory",newHash),{
 uid:me.uid,name,photo:me.photoURL||"",phoneHash:newHash,
 discoverable:true,updatedAt:serverTimestamp()
 });
-}else if(oldHash){
+}else if(oldHash&&!yes){
 let r=doc(db,"phoneDirectory",oldHash);
 let s=await getDoc(r);
 if(s.exists()&&s.data().uid===me.uid)await deleteDoc(r);
 }
 say("Profile save ho gaya.");
-}catch(e){say(e.message)}
+return true;
+}catch(e){say(e.message);return false;}
 }
-
-
 
 // ===== GROUP WEBRTC PEER CONNECTION =====
 function makeGroupTile(uid,name,isLocal=false){
@@ -929,43 +1024,55 @@ $("groupHangupBtn").onclick=()=>endGroupCall();
 // ===== END GROUP CALL ROOM CODE =====
 
 function addResult(box,u){
-let el=document.createElement("div");
-el.className="user";
-let name=esc(u.name||"Chat user");
-el.innerHTML=`
-<b>${name}</b>
-<span id="status-${u.uid}" style="color:gray;font-size:12px;">Checking...</span>
-<br>
-<label><input type="checkbox" class="group-select" style="width:18px">
-Group mein jodein</label>
-<br><button>Message</button>
-`;
-window.groupSelectedUsers=window.groupSelectedUsers||new Map();
-let groupCheck=el.querySelector(".group-select");
-groupCheck.checked=window.groupSelectedUsers.has(u.uid);
-groupCheck.onchange=()=>{
-if(groupCheck.checked){
-if(window.groupSelectedUsers.size>=5){
-groupCheck.checked=false;
-alert("Maximum 5 friends chun sakte hain.");
-return;
-}
-window.groupSelectedUsers.set(u.uid,{uid:u.uid,name:u.name||"Friend"});
-}else{
-window.groupSelectedUsers.delete(u.uid);
-}
-$("groupCallStatus").textContent=window.groupSelectedUsers.size+" friends selected. Maximum 6 log.";
-};
-el.querySelector("button").onclick=()=>openChat(u.uid,u.name||"Friend");
-box.appendChild(el);
-let statusRef=ref(rtdb,"status/"+u.uid);
-onValue(statusRef,s=>{
-let statusEl=$("status-"+u.uid);
-if(!statusEl)return;
-let online=s.exists()&&s.val().state==="online";
-statusEl.textContent=online?"● Online":"● Offline";
-statusEl.style.color=online?"green":"gray";
-});
+ let el=document.createElement("div");
+ el.className="user";
+ el.style.display="flex";
+ el.style.alignItems="center";
+ el.style.gap="12px";
+ el.style.cursor="pointer";
+ el.style.padding="12px";
+ let avatar=document.createElement("div");
+ avatar.className="user-avatar";
+ avatar.style.width="48px";
+ avatar.style.height="48px";
+ avatar.style.flexShrink="0";
+ if(u.photo){
+  let img=document.createElement("img");
+  img.src=u.photo;
+  img.alt="";
+  img.style.width="100%";
+  img.style.height="100%";
+  img.style.objectFit="cover";
+  img.style.borderRadius="50%";
+  avatar.appendChild(img);
+ }else{
+  avatar.textContent=(u.name||"R").trim().charAt(0).toUpperCase();
+ }
+ let info=document.createElement("div");
+ info.style.flex="1";
+ info.style.minWidth="0";
+ let title=document.createElement("b");
+ title.textContent=u.name||"Chat user";
+ title.style.display="block";
+ let status=document.createElement("span");
+ status.id="status-"+u.uid;
+ status.textContent="Checking...";
+ status.style.color="gray";
+ status.style.fontSize="12px";
+ info.appendChild(title);
+ info.appendChild(status);
+ el.appendChild(avatar);
+ el.appendChild(info);
+ el.onclick=()=>openChat(u.uid,u.name||"Friend");
+ box.appendChild(el);
+ let statusRef=ref(rtdb,"status/"+u.uid);
+ onValue(statusRef,s=>{
+  let statusEl=$("status-"+u.uid);
+  if(!statusEl)return;
+  let online=s.exists()&&s.val().state==="online";
+  statusEl.textContent=online?"● Online":"● Offline";
+  statusEl.style.color=online?"green":"gray";
+ });
 }
 async function searchFriends(){
 let t=$("searchInput").value.trim();
@@ -1003,6 +1110,19 @@ createdAt:serverTimestamp(),updatedAt:serverTimestamp()
 }
 activeChat=id;
 activeFriend={uid:other,name};
+if(!$("backToChats")){
+const back=document.createElement("button");
+back.id="backToChats";
+back.className="secondary";
+back.textContent="← Chats";
+back.onclick=()=>{
+document.body.classList.remove("mobile-chat-open");
+document.body.classList.add("mobile-list-open");
+};
+$("chatTitle").before(back);
+}
+document.body.classList.add("mobile-chat-open");
+document.body.classList.remove("mobile-list-open");
 $("chatTitle").textContent=name;
 $("callButtons").classList.remove("hidden");
 if(stopMessages)stopMessages();
@@ -1029,12 +1149,58 @@ let t=$("messageInput").value.trim();
 if(!t||!activeChat)return;
 try{
 await addDoc(collection(db,"chats",activeChat,"messages"),{
-senderId:me.uid,text:t,createdAt:serverTimestamp()
+senderId:me.uid,
+senderName:$("myName").value.trim()||"Member",
+text:t,
+createdAt:serverTimestamp()
 });
 await setDoc(doc(db,"chats",activeChat),{
 lastMessage:t.slice(0,100),updatedAt:serverTimestamp()
 },{merge:true});
 $("messageInput").value="";
+}catch(e){say(e.message)}
+}
+async function openGroupChat(groupId,groupName){
+try{
+activeChat=groupId;
+activeFriend=null;
+activeChatMode="group";
+if(!$("backToChats")){
+const back=document.createElement("button");
+back.id="backToChats";
+back.className="secondary";
+back.textContent="← Chats";
+back.onclick=()=>{
+document.body.classList.remove("mobile-chat-open");
+document.body.classList.add("mobile-list-open");
+};
+$("chatTitle").before(back);
+}
+document.body.classList.add("mobile-chat-open");
+document.body.classList.remove("mobile-list-open");
+$("chatTitle").textContent="👥 "+groupName;
+$("callButtons").classList.add("hidden");
+if(stopMessages)stopMessages();
+$("messages").innerHTML="";
+stopMessages=onSnapshot(
+query(collection(db,"chats",groupId,"messages"),orderBy("createdAt","asc")),
+ss=>{
+$("messages").innerHTML="";
+ss.forEach(d=>{
+let m=d.data();
+let el=document.createElement("div");
+el.className="msg"+(m.senderId===me.uid?" mine":"");
+let body=document.createElement("span");
+body.textContent=m.text||"";
+let who=document.createElement("small");
+who.textContent=m.senderId===me.uid?"You":(m.senderName||"Member");
+el.appendChild(body);
+el.appendChild(who);
+$("messages").appendChild(el);
+});
+$("messages").scrollTop=$("messages").scrollHeight;
+},e=>say(e.message)
+);
 }catch(e){say(e.message)}
 }
 
@@ -1047,21 +1213,135 @@ let box=$("chatList");
 box.innerHTML="";
 for(let d of s.docs){
 let c=d.data();
-let other=c.participants.find(x=>x!==me.uid);
-if(!other)continue;
-let name="Friend";
+let isGroup=c.type==="group";
+let other=(c.participants||[]).find(x=>x!==me.uid);
+if(!isGroup&&!other)continue;
+let name=isGroup?(c.name||"Group"):"Friend";
+let photo="";
+if(!isGroup){
 try{
 let p=await getDoc(doc(db,"publicProfiles",other));
-if(p.exists())name=p.data().name||name;
+if(p.exists()){
+let profile=p.data();
+name=profile.name||name;
+photo=profile.photo||"";
+}
 }catch{}
+}
 let el=document.createElement("div");
 el.className="user";
-el.innerHTML="<b>"+esc(name)+"</b><div class='muted'>"+esc(c.lastMessage||"Chat shuru karein")+"</div>";
-el.onclick=()=>openChat(other,name);
+let avatar=document.createElement("div");
+avatar.className="user-avatar";
+if(photo){
+let img=document.createElement("img");
+img.src=photo;
+img.alt="";
+img.onerror=()=>{avatar.textContent="RA";};
+avatar.appendChild(img);
+}else{
+avatar.textContent=isGroup?"👥":"RA";
+}
+let info=document.createElement("div");
+info.className="user-info";
+let title=document.createElement("b");
+title.className="user-name";
+title.textContent=name;
+let last=document.createElement("div");
+last.className="user-last muted";
+last.textContent=c.lastMessage||"Chat shuru karein";
+info.appendChild(title);
+info.appendChild(last);
+el.appendChild(avatar);
+el.appendChild(info);
+el.onclick=()=>isGroup?openGroupChat(d.id,name):openChat(other,name);
 box.appendChild(el);
 }
 },e=>say(e.message)
 );
+}
+
+window.groupChatSelected=window.groupChatSelected||new Map();
+
+async function renderGroupChatFriends(){
+let box=$("groupFriendResults");
+box.innerHTML="Friends load ho rahe hain...";
+try{
+let snap=await getDocs(collection(db,"publicProfiles"));
+window.groupChatAllUsers=[];
+snap.forEach(d=>{
+let u=d.data();
+if(u.uid&&u.uid!==me.uid&&u.discoverable)
+window.groupChatAllUsers.push({uid:u.uid,name:u.name||"Friend"});
+});
+showGroupChatFriends();
+}catch(e){box.textContent="Friends load error: "+e.message}
+}
+
+function showGroupChatFriends(){
+let box=$("groupFriendResults");
+let term=$("groupFriendSearch").value.trim().toLowerCase();
+box.innerHTML="";
+let users=(window.groupChatAllUsers||[]).filter(u=>u.name.toLowerCase().includes(term));
+if(!users.length){box.textContent="Koi discoverable friend nahi mila.";return;}
+users.slice(0,100).forEach(u=>{
+let row=document.createElement("label");
+row.style.display="block";
+row.style.padding="8px";
+let check=document.createElement("input");
+check.type="checkbox";
+check.style.width="auto";
+check.checked=window.groupChatSelected.has(u.uid);
+check.onchange=()=>{
+if(check.checked){
+if(window.groupChatSelected.size>=99){
+check.checked=false;
+alert("Aap samet maximum 100 members ho sakte hain.");
+return;
+}
+window.groupChatSelected.set(u.uid,u);
+}else{
+window.groupChatSelected.delete(u.uid);
+}
+$("groupChatSelectionStatus").textContent=
+window.groupChatSelected.size+" friends selected. Total members: "+
+(window.groupChatSelected.size+1)+"/100";
+};
+row.appendChild(check);
+row.appendChild(document.createTextNode(" "+u.name));
+box.appendChild(row);
+});
+}
+
+async function createGroupChat(){
+let name=$("newGroupName").value.trim();
+if(!name){alert("Group ka naam likhein.");return;}
+if(window.groupChatSelected.size<1){
+alert("Kam se kam ek friend chunein.");
+return;
+}
+if(window.groupChatSelected.size>99){
+alert("Maximum 99 friends chun sakte hain.");
+return;
+}
+try{
+let members=[me.uid,...Array.from(window.groupChatSelected.keys())];
+let groupRef=doc(collection(db,"chats"));
+await setDoc(groupRef,{
+type:"group",
+name:name,
+participants:members,
+createdBy:me.uid,
+lastMessage:"",
+createdAt:serverTimestamp(),
+updatedAt:serverTimestamp()
+});
+window.groupChatSelected.clear();
+$("newGroupName").value="";
+$("groupFriendSearch").value="";
+$("groupChatSelectionStatus").textContent="0 friends selected.";
+$("groupChatPanel").classList.add("hidden");
+openGroupChat(groupRef.id,name);
+}catch(e){alert("Group create error: "+e.message)}
 }
 
 function listenForCalls(){
@@ -1149,16 +1429,9 @@ catch(e){say("ICE candidate error: "+e.message)}
 }
 }
 
-function watchCandidates(path){
-if(stopCandidates)stopCandidates();
-seenCandidates=new Set();
-stopCandidates=onSnapshot(collection(db,"calls",activeCallId,path),ss=>{
-ss.docChanges().forEach(async change=>{
-if(change.type!=="added"||seenCandidates.has(change.doc.id))return;
-seenCandidates.add(change.doc.id);
-let c=change.doc.data();
-if(c.uid===me.uid)return;
-if(!remoteDescriptionReady)return;
+let earlyRemoteCandidates=[];
+async function addRemoteCandidate(c){
+if(!pc||!remoteDescriptionReady)return;
 try{
 await pc.addIceCandidate(new RTCIceCandidate({
 candidate:c.candidate,
@@ -1166,6 +1439,22 @@ sdpMid:c.sdpMid,
 sdpMLineIndex:c.sdpMLineIndex
 }));
 }catch(e){console.warn("ICE candidate:",e)}
+}
+async function flushRemoteCandidates(){
+let list=earlyRemoteCandidates.splice(0);
+for(const c of list)await addRemoteCandidate(c);
+}
+function watchCandidates(path){
+if(stopCandidates)stopCandidates();
+seenCandidates=new Set();
+stopCandidates=onSnapshot(collection(db,"calls",activeCallId,path),ss=>{
+ss.docChanges().forEach(change=>{
+if(change.type!=="added"||seenCandidates.has(change.doc.id))return;
+seenCandidates.add(change.doc.id);
+let c=change.doc.data();
+if(c.uid===me.uid)return;
+if(!remoteDescriptionReady){earlyRemoteCandidates.push(c);return;}
+addRemoteCandidate(c);
 });
 },e=>say("Candidate error: "+e.message));
 }
@@ -1222,6 +1511,7 @@ if(isCaller&&data.answer&&!remoteDescriptionReady){
 try{
 await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
 remoteDescriptionReady=true;
+await flushRemoteCandidates();
 await flushCandidates("callerCandidates");
 $("callStatus").textContent="Call connected / waiting...";
 }catch(e){say("Answer error: "+e.message)}
@@ -1265,6 +1555,7 @@ else pendingCandidates.push(e.candidate);
 };
 await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
 remoteDescriptionReady=true;
+await flushRemoteCandidates();
 watchCandidates("callerCandidates");
 let answer=await pc.createAnswer();
 await pc.setLocalDescription(answer);
@@ -1316,6 +1607,7 @@ if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}
 if(remoteStream){remoteStream.getTracks().forEach(t=>t.stop());remoteStream=null}
 activeCallId=null;
 pendingCandidates=[];
+earlyRemoteCandidates=[];
 seenCandidates.clear();
 remoteDescriptionReady=false;
 endingCall=false;
@@ -1361,11 +1653,30 @@ if(stopPresence){
 photoEl.style.display="none";
 }
 }
-$("myName").value=s.exists()?s.data().name||u.displayName||"":u.displayName||"";
+let hasProfile=s.exists()&&typeof s.data().name==="string"&&s.data().name.trim().length>=2;
+$("myName").value=hasProfile?s.data().name:(u.displayName||"");
+$("myPhone").value="";
 $("discoverable").checked=s.exists()&&!!s.data().discoverable;
+let profileHeading=$("profilePanel").querySelector(".row h2");
+
+if(hasProfile){
+$("profilePanel").classList.add("hidden");
+$("profileNext").classList.add("hidden");
+$("profileClose").classList.remove("hidden");
+profileHeading.textContent="My Profile";
+$("topSearchPanel").classList.remove("hidden");
+document.querySelector("#app .columns").classList.remove("hidden");
 loadChats();
 listenForCalls();
-        listenForGroupCalls();
+listenForGroupCalls();
+}else{
+$("profilePanel").classList.remove("hidden");
+$("profileNext").classList.remove("hidden");
+$("profileClose").classList.add("hidden");
+profileHeading.textContent="Profile Setup";
+$("topSearchPanel").classList.add("hidden");
+document.querySelector("#app .columns").classList.add("hidden");
+}
 }catch(e){say(e.message)}
 }else{
 $("auth").classList.remove("hidden");
