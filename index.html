@@ -93,7 +93,9 @@ color:white;font-size:19px;font-weight:bold;
 width:100%;height:100%;object-fit:cover;border-radius:50%;
 }
 #chatList .user-info{flex:1;min-width:0}
-#chatList .user-name{display:block;font-size:16px;margin-bottom:5px}
+#chatList .user-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+#chatList .user-name{display:block;font-size:16px;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#chatList .user-time{font-size:12px;color:#9da6cf;white-space:nowrap;flex:none}
 #chatList .user-last{
 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
@@ -1211,11 +1213,17 @@ query(collection(db,"chats"),where("participants","array-contains",me.uid)),
 async s=>{
 let box=$("chatList");
 box.innerHTML="";
-for(let d of s.docs){
+let docs=[...s.docs].sort((a,b)=>{
+let ta=a.data().updatedAt?.toMillis?.()||a.data().createdAt?.toMillis?.()||0;
+let tb=b.data().updatedAt?.toMillis?.()||b.data().createdAt?.toMillis?.()||0;
+return tb-ta;
+});
+for(let d of docs){
 let c=d.data();
 let isGroup=c.type==="group";
 let other=(c.participants||[]).find(x=>x!==me.uid);
 if(!isGroup&&!other)continue;
+if(!isGroup&&!c.lastMessage)continue;
 let name=isGroup?(c.name||"Group"):"Friend";
 let photo="";
 if(!isGroup){
@@ -1243,13 +1251,26 @@ avatar.textContent=isGroup?"👥":"RA";
 }
 let info=document.createElement("div");
 info.className="user-info";
+let head=document.createElement("div");
+head.className="user-head";
 let title=document.createElement("b");
 title.className="user-name";
 title.textContent=name;
+let time=document.createElement("small");
+time.className="user-time";
+let stamp=c.updatedAt?.toDate?.()||c.createdAt?.toDate?.();
+if(stamp){
+let now=new Date();
+time.textContent=stamp.toDateString()===now.toDateString()
+?stamp.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})
+:stamp.toLocaleDateString("en-IN",{day:"2-digit",month:"2-digit",year:"2-digit"});
+}
+head.appendChild(title);
+head.appendChild(time);
 let last=document.createElement("div");
 last.className="user-last muted";
 last.textContent=c.lastMessage||"Chat shuru karein";
-info.appendChild(title);
+info.appendChild(head);
 info.appendChild(last);
 el.appendChild(avatar);
 el.appendChild(info);
@@ -1259,7 +1280,6 @@ box.appendChild(el);
 },e=>say(e.message)
 );
 }
-
 window.groupChatSelected=window.groupChatSelected||new Map();
 
 async function renderGroupChatFriends(){
