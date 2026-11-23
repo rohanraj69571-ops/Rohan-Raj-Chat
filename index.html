@@ -114,13 +114,14 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 <button id="menuToggle" class="secondary" style="font-size:22px;padding:6px 13px"
 onclick="document.getElementById('topMenu').classList.toggle('hidden')">⋮</button>
 <div id="topMenu" class="panel hidden" style="position:absolute;right:0;top:48px;z-index:100;width:215px;max-height:75vh;overflow-y:auto;padding:10px">
-<button class="secondary" style="width:100%" onclick="if(document.getElementById('app').classList.contains('hidden')){alert('Pehle login karein.')}else{document.getElementById('topSearchPanel').classList.remove('hidden');document.getElementById('searchInput').focus()}document.getElementById('topMenu').classList.add('hidden')">🔍 Add Friend</button>
-<button class="secondary" style="width:100%" onclick="document.getElementById('groupChatPanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">👥 New Group Chat</button>
-<button class="secondary" style="width:100%" onclick="document.getElementById('groupCallPanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">📞 Group Voice Call</button>
-<button class="secondary" style="width:100%" onclick="document.getElementById('groupCallPanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">🎥 Group Video Call</button>
-<button class="secondary" style="width:100%" onclick="document.getElementById('profilePanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">👤 Profile</button>
-<button class="secondary" style="width:100%" onclick="document.getElementById('topMenu').classList.add('hidden');window.enableNotifications()">🔔 Notifications</button>
-<button id="logoutBtn" class="danger" style="width:100%">Logout</button>
+<button class="secondary" style="width:100%" onclick="alert('Rohan Raj Chat Help\\n\\nGoogle account se Continue with Google dabakar login karein.\\nNaya account banane ke liye Create account dabayein.\\nLogin ke baad Add Friend se dost khojein aur chat shuru karein.')">❓ Help</button>
+<button class="secondary loggedInMenu hidden" style="width:100%" onclick="document.getElementById('topSearchPanel').classList.remove('hidden');document.getElementById('searchInput').focus();document.getElementById('topMenu').classList.add('hidden')">🔍 Add Friend</button>
+<button class="secondary loggedInMenu hidden" style="width:100%" onclick="document.getElementById('groupChatPanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">👥 New Group Chat</button>
+<button class="secondary loggedInMenu hidden" style="width:100%" onclick="document.getElementById('groupCallPanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">📞 Group Voice Call</button>
+<button class="secondary loggedInMenu hidden" style="width:100%" onclick="document.getElementById('groupCallPanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">🎥 Group Video Call</button>
+<button class="secondary loggedInMenu hidden" style="width:100%" onclick="document.getElementById('profilePanel').classList.remove('hidden');document.getElementById('topMenu').classList.add('hidden')">👤 Profile</button>
+<button class="secondary loggedInMenu hidden" style="width:100%" onclick="document.getElementById('topMenu').classList.add('hidden');window.enableNotifications()">🔔 Notifications</button>
+<button id="logoutBtn" class="danger loggedInMenu hidden" style="width:100%">Logout</button>
 </div>
 </div>
 </header>
@@ -1656,6 +1657,8 @@ $("cameraBtn").textContent=track.enabled?"Camera off":"Camera on";
 onAuthStateChanged(auth,async u=>{
   console.log("LOGIN USER:", u?.uid);
 me=u;
+document.querySelectorAll(".loggedInMenu").forEach(item => item.classList.toggle("hidden", !u));
+$("topMenu").classList.add("hidden");
 if(u){
 setupPresence(u.uid);
 $("auth").classList.add("hidden");
