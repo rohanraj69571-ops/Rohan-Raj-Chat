@@ -1232,183 +1232,248 @@ if(!n)box.textContent="Koi user nahi mila.";
 }catch(e){box.textContent=e.message}
 }
 
-async function openChat(other,name){
-try{
-let id=cid(me.uid,other);
-let r=doc(db,"chats",id);
-await setDoc(r,{
-participants:[me.uid,other].sort(),
-updatedAt:serverTimestamp()
-},{merge:true});
-activeChat=id;
-activeFriend={uid:other,name};
-if(!$("backToChats")){
-const back=document.createElement("button");
-back.id="backToChats";
-back.className="secondary";
-back.textContent="← Chats";
-back.onclick=()=>{
-document.body.classList.remove("mobile-chat-open");
-document.body.classList.add("mobile-list-open");
-};
-$("chatTitle").before(back);
+
+async function handleMessageAction(messageId,m){
+  try{
+    if(m.deletedForEveryone)return;
+    const mine=m.senderId===me.uid;
+    const choice=prompt(
+      mine
+      ? "Message delete karein:\n1 = Delete for me\n2 = Delete for everyone\n0 = Cancel"
+      : "Message delete karein:\n1 = Delete for me\n0 = Cancel"
+    );
+    if(choice==="1"){
+      await updateDoc(doc(db,"chats",activeChat,"messages",messageId),{
+        deletedFor:arrayUnion(me.uid)
+      });
+    }else if(choice==="2"&&mine){
+      if(!confirm("Kya ye message dono taraf se delete karna hai?"))return;
+      await updateDoc(doc(db,"chats",activeChat,"messages",messageId),{
+        deletedForEveryone:true,
+        text:"This message was deleted",
+        deletedAt:serverTimestamp()
+      });
+    }
+  }catch(e){say("Delete error: "+e.message)}
 }
-document.body.classList.add("mobile-chat-open");
-document.body.classList.remove("mobile-list-open");
-$("chatTitle").textContent=name;
-$("callButtons").classList.remove("hidden");
-if(stopMessages)stopMessages();
-$("messages").innerHTML="";
-stopMessages=onSnapshot(
-query(collection(db,"chats",id,"messages"),orderBy("createdAt","asc")),
-ss=>{
-$("messages").innerHTML="";
-ss.forEach(d=>{
-let m=d.data();
-let el=document.createElement("div");
-el.className="msg"+(m.senderId===me.uid?" mine":"");
-el.innerHTML=esc(m.text)+"<small>"+(m.senderId===me.uid?"You":"Friend")+"</small>";
-$("messages").appendChild(el);
-});
-$("messages").scrollTop=$("messages").scrollHeight;
-},e=>say(e.message)
-);
-}catch(e){say(e.message)}
+
+async function openChat(other,name){
+  try{
+    let id=cid(me.uid,other);
+    let r=doc(db,"chats",id);
+    await setDoc(r,{
+      participants:[me.uid,other].sort(),
+      updatedAt:serverTimestamp()
+    },{merge:true});
+    activeChat=id;
+    activeFriend={uid:other,name};
+    activeChatMode="private";
+    if(!$("backToChats")){
+      const back=document.createElement("button");
+      back.id="backToChats";
+      back.className="secondary";
+      back.textContent="← Chats";
+      back.onclick=()=>{
+        document.body.classList.remove("mobile-chat-open");
+        document.body.classList.add("mobile-list-open");
+      };
+      $("chatTitle").before(back);
+    }
+    document.body.classList.add("mobile-chat-open");
+    document.body.classList.remove("mobile-list-open");
+    $("chatTitle").textContent=name;
+    $("callButtons").classList.remove("hidden");
+    if(stopMessages)stopMessages();
+    $("messages").innerHTML="";
+    stopMessages=onSnapshot(
+      query(collection(db,"chats",id,"messages"),orderBy("createdAt","asc")),
+      ss=>{
+        $("messages").innerHTML="";
+        ss.forEach(d=>{
+          let m=d.data();
+          if((m.deletedFor||[]).includes(me.uid))return;
+          let el=document.createElement("div");
+          el.className="msg"+(m.senderId===me.uid?" mine":"");
+          let body=document.createElement("span");
+          body.textContent=m.deletedForEveryone?"This message was deleted":(m.text||"");
+          let who=document.createElement("small");
+          who.textContent=m.deletedForEveryone?"Deleted":(m.senderId===me.uid?"You":"Friend");
+          el.appendChild(body);
+          el.appendChild(who);
+          if(!m.deletedForEveryone){
+            el.style.cursor="pointer";
+            el.title="Tap for message options";
+            el.addEventListener("click",()=>handleMessageAction(d.id,m));
+          }
+          $("messages").appendChild(el);
+        });
+        $("messages").scrollTop=$("messages").scrollHeight;
+      },e=>say(e.message)
+    );
+  }catch(e){say(e.message)}
 }
 
 async function sendMessage(){
-let t=$("messageInput").value.trim();
-if(!t||!activeChat)return;
-try{
-await addDoc(collection(db,"chats",activeChat,"messages"),{
-senderId:me.uid,
-senderName:$("myName").value.trim()||"Member",
-text:t,
-createdAt:serverTimestamp()
-});
-await setDoc(doc(db,"chats",activeChat),{
-lastMessage:t.slice(0,100),updatedAt:serverTimestamp()
-},{merge:true});
-$("messageInput").value="";
-}catch(e){say(e.message)}
+  let t=$("messageInput").value.trim();
+  if(!t||!activeChat)return;
+  try{
+    await addDoc(collection(db,"chats",activeChat,"messages"),{
+      senderId:me.uid,
+      senderName:$("myName").value.trim()||"Member",
+      text:t,
+      createdAt:serverTimestamp(),
+      deletedFor:[],
+      deletedForEveryone:false
+    });
+    await setDoc(doc(db,"chats",activeChat),{
+      lastMessage:t.slice(0,100),
+      updatedAt:serverTimestamp()
+    },{merge:true});
+    $("messageInput").value="";
+  }catch(e){say(e.message)}
 }
+
 async function openGroupChat(groupId,groupName){
-try{
-activeChat=groupId;
-activeFriend=null;
-activeChatMode="group";
-if(!$("backToChats")){
-const back=document.createElement("button");
-back.id="backToChats";
-back.className="secondary";
-back.textContent="← Chats";
-back.onclick=()=>{
-document.body.classList.remove("mobile-chat-open");
-document.body.classList.add("mobile-list-open");
-};
-$("chatTitle").before(back);
-}
-document.body.classList.add("mobile-chat-open");
-document.body.classList.remove("mobile-list-open");
-$("chatTitle").textContent="👥 "+groupName;
-$("callButtons").classList.add("hidden");
-if(stopMessages)stopMessages();
-$("messages").innerHTML="";
-stopMessages=onSnapshot(
-query(collection(db,"chats",groupId,"messages"),orderBy("createdAt","asc")),
-ss=>{
-$("messages").innerHTML="";
-ss.forEach(d=>{
-let m=d.data();
-let el=document.createElement("div");
-el.className="msg"+(m.senderId===me.uid?" mine":"");
-let body=document.createElement("span");
-body.textContent=m.text||"";
-let who=document.createElement("small");
-who.textContent=m.senderId===me.uid?"You":(m.senderName||"Member");
-el.appendChild(body);
-el.appendChild(who);
-$("messages").appendChild(el);
-});
-$("messages").scrollTop=$("messages").scrollHeight;
-},e=>say(e.message)
-);
-}catch(e){say(e.message)}
+  try{
+    activeChat=groupId;
+    activeFriend=null;
+    activeChatMode="group";
+    if(!$("backToChats")){
+      const back=document.createElement("button");
+      back.id="backToChats";
+      back.className="secondary";
+      back.textContent="← Chats";
+      back.onclick=()=>{
+        document.body.classList.remove("mobile-chat-open");
+        document.body.classList.add("mobile-list-open");
+      };
+      $("chatTitle").before(back);
+    }
+    document.body.classList.add("mobile-chat-open");
+    document.body.classList.remove("mobile-list-open");
+    $("chatTitle").textContent="👥 "+groupName;
+    $("callButtons").classList.add("hidden");
+    if(stopMessages)stopMessages();
+    $("messages").innerHTML="";
+    stopMessages=onSnapshot(
+      query(collection(db,"chats",groupId,"messages"),orderBy("createdAt","asc")),
+      ss=>{
+        $("messages").innerHTML="";
+        ss.forEach(d=>{
+          let m=d.data();
+          if((m.deletedFor||[]).includes(me.uid))return;
+          let el=document.createElement("div");
+          el.className="msg"+(m.senderId===me.uid?" mine":"");
+          let body=document.createElement("span");
+          body.textContent=m.deletedForEveryone?"This message was deleted":(m.text||"");
+          let who=document.createElement("small");
+          who.textContent=m.deletedForEveryone?"Deleted":(m.senderId===me.uid?"You":(m.senderName||"Member"));
+          el.appendChild(body);
+          el.appendChild(who);
+          if(!m.deletedForEveryone){
+            el.style.cursor="pointer";
+            el.title="Tap for message options";
+            el.addEventListener("click",()=>handleMessageAction(d.id,m));
+          }
+          $("messages").appendChild(el);
+        });
+        $("messages").scrollTop=$("messages").scrollHeight;
+      },e=>say(e.message)
+    );
+  }catch(e){say(e.message)}
 }
 
 function loadChats(){
-if(stopChats)stopChats();
-stopChats=onSnapshot(
-query(collection(db,"chats"),where("participants","array-contains",me.uid)),
-async s=>{
-let box=$("chatList");
-box.innerHTML="";
-let docs=[...s.docs].sort((a,b)=>{
-let ta=a.data().updatedAt?.toMillis?.()||a.data().createdAt?.toMillis?.()||0;
-let tb=b.data().updatedAt?.toMillis?.()||b.data().createdAt?.toMillis?.()||0;
-return tb-ta;
-});
-for(let d of docs){
-let c=d.data();
-let isGroup=c.type==="group";
-let other=(c.participants||[]).find(x=>x!==me.uid);
-if(!isGroup&&!other)continue;
-if(!isGroup&&!c.lastMessage)continue;
-let name=isGroup?(c.name||"Group"):"Friend";
-let photo="";
-if(!isGroup){
-try{
-let p=await getDoc(doc(db,"publicProfiles",other));
-if(p.exists()){
-let profile=p.data();
-name=profile.name||name;
-photo=profile.photo||"";
-}
-}catch{}
-}
-let el=document.createElement("div");
-el.className="user";
-let avatar=document.createElement("div");
-avatar.className="user-avatar";
-if(photo){
-let img=document.createElement("img");
-img.src=photo;
-img.alt="";
-img.onerror=()=>{avatar.textContent="RA";};
-avatar.appendChild(img);
-}else{
-avatar.textContent=isGroup?"👥":"RA";
-}
-let info=document.createElement("div");
-info.className="user-info";
-let head=document.createElement("div");
-head.className="user-head";
-let title=document.createElement("b");
-title.className="user-name";
-title.textContent=name;
-let time=document.createElement("small");
-time.className="user-time";
-let stamp=c.updatedAt?.toDate?.()||c.createdAt?.toDate?.();
-if(stamp){
-let now=new Date();
-time.textContent=stamp.toDateString()===now.toDateString()
-?stamp.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})
-:stamp.toLocaleDateString("en-IN",{day:"2-digit",month:"2-digit",year:"2-digit"});
-}
-head.appendChild(title);
-head.appendChild(time);
-let last=document.createElement("div");
-last.className="user-last muted";
-last.textContent=c.lastMessage||"Chat shuru karein";
-info.appendChild(head);
-info.appendChild(last);
-el.appendChild(avatar);
-el.appendChild(info);
-el.onclick=()=>isGroup?openGroupChat(d.id,name):openChat(other,name);
-box.appendChild(el);
-}
-},e=>say(e.message)
-);
+  if(stopChats)stopChats();
+  stopChats=onSnapshot(
+    query(collection(db,"chats"),where("participants","array-contains",me.uid)),
+    async s=>{
+      let box=$("chatList");
+      box.innerHTML="";
+      let docs=[...s.docs].sort((a,b)=>{
+        let ta=a.data().updatedAt?.toMillis?.()||a.data().createdAt?.toMillis?.()||0;
+        let tb=b.data().updatedAt?.toMillis?.()||b.data().createdAt?.toMillis?.()||0;
+        return tb-ta;
+      });
+      for(let d of docs){
+        let c=d.data();
+        if((c.hiddenFor||[]).includes(me.uid))continue;
+        let isGroup=c.type==="group";
+        let other=(c.participants||[]).find(x=>x!==me.uid);
+        if(!isGroup&&!other)continue;
+        if(!isGroup&&!c.lastMessage)continue;
+        let name=isGroup?(c.name||"Group"):"Friend";
+        let photo="";
+        if(!isGroup){
+          try{
+            let p=await getDoc(doc(db,"publicProfiles",other));
+            if(p.exists()){
+              let profile=p.data();
+              name=profile.name||name;
+              photo=profile.photo||"";
+            }
+          }catch{}
+        }
+        let el=document.createElement("div");
+        el.className="user";
+        let avatar=document.createElement("div");
+        avatar.className="user-avatar";
+        if(photo){
+          let img=document.createElement("img");
+          img.src=photo;
+          img.alt="";
+          img.onerror=()=>{avatar.textContent="RA";};
+          avatar.appendChild(img);
+        }else{
+          avatar.textContent=isGroup?"👥":"RA";
+        }
+        let info=document.createElement("div");
+        info.className="user-info";
+        let head=document.createElement("div");
+        head.className="user-head";
+        let title=document.createElement("b");
+        title.className="user-name";
+        title.textContent=name;
+        let time=document.createElement("small");
+        time.className="user-time";
+        let stamp=c.updatedAt?.toDate?.()||c.createdAt?.toDate?.();
+        if(stamp){
+          let now=new Date();
+          time.textContent=stamp.toDateString()===now.toDateString()
+            ?stamp.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"})
+            :stamp.toLocaleDateString("en-IN",{day:"2-digit",month:"2-digit",year:"2-digit"});
+        }
+        head.appendChild(title);
+        head.appendChild(time);
+        let last=document.createElement("div");
+        last.className="user-last muted";
+        last.textContent=c.lastMessage||"Chat shuru karein";
+        info.appendChild(head);
+        info.appendChild(last);
+        el.appendChild(avatar);
+        el.appendChild(info);
+        el.onclick=()=>isGroup?openGroupChat(d.id,name):openChat(other,name);
+
+        let del=document.createElement("button");
+        del.className="danger";
+        del.textContent="🗑";
+        del.title="Delete chat for me";
+        del.style.flex="none";
+        del.style.minWidth="42px";
+        del.onclick=async ev=>{
+          ev.stopPropagation();
+          if(!confirm("Ye chat sirf aapki chat list se hide hogi. Continue?"))return;
+          try{
+            await updateDoc(doc(db,"chats",d.id),{
+              hiddenFor:arrayUnion(me.uid)
+            });
+          }catch(e){say("Chat delete error: "+e.message)}
+        };
+        el.appendChild(del);
+        box.appendChild(el);
+      }
+    },e=>say(e.message)
+  );
 }
 window.groupChatSelected=window.groupChatSelected||new Map();
 

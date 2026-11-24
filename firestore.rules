@@ -1,0 +1,379 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isChatMember(chatId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/chats/$(chatId))
+        && request.auth.uid in get(
+          /databases/$(database)/documents/chats/$(chatId)
+        ).data.participants;
+    }
+
+    function isCallMember(callId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/calls/$(callId))
+        && (
+          request.auth.uid == get(
+            /databases/$(database)/documents/calls/$(callId)
+          ).data.callerId
+          ||
+          request.auth.uid == get(
+            /databases/$(database)/documents/calls/$(callId)
+          ).data.calleeId
+        );
+    }
+
+    function isGroupMember(roomId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/groupCalls/$(roomId))
+        && request.auth.uid in get(
+          /databases/$(database)/documents/groupCalls/$(roomId)
+        ).data.memberUids;
+    }
+
+    function isGroupPairMember(roomId, pairId) {
+      return isGroupMember(roomId)
+        && exists(
+          /databases/$(database)/documents/groupCalls/$(roomId)/connections/$(pairId)
+        )
+        && (
+          request.auth.uid == get(
+            /databases/$(database)/documents/groupCalls/$(roomId)/connections/$(pairId)
+          ).data.callerUid
+          ||
+          request.auth.uid == get(
+            /databases/$(database)/documents/groupCalls/$(roomId)/connections/$(pairId)
+          ).data.calleeUid
+        );
+    }
+
+    // USERS
+    match /users/{userId} {
+      allow create, read, update: if signedIn()
+        && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // PUBLIC PROFILES
+    match /publicProfiles/{userId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // PHONE DIRECTORY
+    match /phoneDirectory/{phoneHash} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // PRIVATE AND GROUP CHATS
+    match /chats/{chatId} {
+
+      allow create: if signedIn()
+        && request.resource.data.participants is list
+        && request.auth.uid in request.resource.data.participants
+        && (
+          (
+            request.resource.data.type == 'group'
+            && request.resource.data.participants.size() >= 2
+            && request.resource.data.participants.size() <= 100
+            && request.resource.data.createdBy == request.auth.uid
+            && request.resource.data.name is string
+            && request.resource.data.name.size() <= 60
+            && request.resource.data.keys().hasOnly([
+              'type', 'name', 'participants', 'createdBy',
+              'lastMessage', 'createdAt', 'updatedAt'
+            ])
+          )
+          ||
+          (
+            request.resource.data.participants.size() == 2
+            && (
+              !('type' in request.resource.data)
+              || request.resource.data.type != 'group'
+            )
+          )
+        );
+
+      allow get, list: if signedIn()
+        && request.auth.uid in resource.data.participants;
+
+      // Update last message and allow only the current member
+      // to hide this chat for their own account.
+      allow update: if isChatMember(chatId)
+        && request.resource.data.participants == resource.data.participants
+        && request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly([
+            'lastMessage', 'updatedAt', 'hiddenFor'
+          ])
+        && (
+          !request.resource.data.diff(resource.data)
+            .affectedKeys().hasAny(['hiddenFor'])
+          ||
+          (
+            request.resource.data.hiddenFor is list
+            && request.resource.data.hiddenFor.hasAll(
+              resource.data.get('hiddenFor', [])
+            )
+            && request.resource.data.hiddenFor.size()
+              == resource.data.get('hiddenFor', []).size() + 1
+            && request.auth.uid in request.resource.data.hiddenFor
+            && !(request.auth.uid in resource.data.get('hiddenFor', []))
+          )
+        );
+
+      allow delete: if false;
+
+      // CHAT MESSAGES
+      match /messages/{messageId} {
+
+        allow read: if isChatMember(chatId);
+
+        allow create: if isChatMember(chatId)
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.keys().hasOnly([
+            'senderId', 'senderName', 'text', 'createdAt',
+            'deletedFor', 'deletedForEveryone'
+          ])
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.senderName is string
+          && request.resource.data.senderName.size() <= 60
+          && request.resource.data.get('deletedFor', []) == []
+          && request.resource.data.get('deletedForEveryone', false) == false;
+
+        // Delete for me: only add the current user's UID.
+        // Delete for everyone: only the original sender.
+        allow update: if isChatMember(chatId)
+          && (
+            (
+              request.resource.data.diff(resource.data)
+                .affectedKeys().hasOnly(['deletedFor'])
+              && request.resource.data.deletedFor is list
+              && request.resource.data.deletedFor.hasAll(
+                resource.data.get('deletedFor', [])
+              )
+              && request.resource.data.deletedFor.size()
+                == resource.data.get('deletedFor', []).size() + 1
+              && request.auth.uid in request.resource.data.deletedFor
+              && !(request.auth.uid in resource.data.get('deletedFor', []))
+            )
+            ||
+            (
+              request.auth.uid == resource.data.senderId
+              && request.resource.data.diff(resource.data)
+                .affectedKeys().hasOnly([
+                  'deletedForEveryone', 'text', 'deletedAt'
+                ])
+              && request.resource.data.deletedForEveryone == true
+              && request.resource.data.text == 'This message was deleted'
+              && request.resource.data.deletedAt == request.time
+            )
+          );
+
+        allow delete: if false;
+      }
+    }
+
+    // PERSONAL VOICE AND VIDEO CALLS
+    match /calls/{callId} {
+
+      allow create: if signedIn()
+        && request.resource.data.callerId == request.auth.uid
+        && request.resource.data.calleeId is string
+        && request.resource.data.calleeId != request.auth.uid
+        && request.resource.data.status == 'ringing'
+        && request.resource.data.type in ['audio', 'video']
+        && request.resource.data.keys().hasOnly([
+          'callerId', 'calleeId', 'status', 'type',
+          'offer', 'answer', 'createdAt', 'updatedAt'
+        ]);
+
+      allow get: if signedIn()
+        && (
+          request.auth.uid == resource.data.callerId
+          || request.auth.uid == resource.data.calleeId
+        );
+
+      allow list: if signedIn()
+        && resource.data.calleeId == request.auth.uid;
+
+      allow update: if signedIn()
+        && (
+          request.auth.uid == resource.data.callerId
+          || request.auth.uid == resource.data.calleeId
+        )
+        && request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly([
+            'status', 'answer', 'updatedAt'
+          ]);
+
+      allow delete: if false;
+
+      match /callerCandidates/{candidateId} {
+        allow read: if isCallMember(callId);
+
+        allow create: if isCallMember(callId)
+          && request.auth.uid == get(
+            /databases/$(database)/documents/calls/$(callId)
+          ).data.callerId
+          && request.resource.data.uid == request.auth.uid;
+
+        allow update, delete: if false;
+      }
+
+      match /calleeCandidates/{candidateId} {
+        allow read: if isCallMember(callId);
+
+        allow create: if isCallMember(callId)
+          && request.auth.uid == get(
+            /databases/$(database)/documents/calls/$(callId)
+          ).data.calleeId
+          && request.resource.data.uid == request.auth.uid;
+
+        allow update, delete: if false;
+      }
+    }
+
+    // GROUP CALLS - MAXIMUM 6 PEOPLE
+    match /groupCalls/{roomId} {
+
+      allow create: if signedIn()
+        && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.memberUids is list
+        && request.resource.data.memberUids.size() >= 2
+        && request.resource.data.memberUids.size() <= 6
+        && request.auth.uid in request.resource.data.memberUids
+        && request.resource.data.participants == [request.auth.uid]
+        && request.resource.data.declinedUids == []
+        && request.resource.data.type in ['audio', 'video']
+        && request.resource.data.status == 'ringing'
+        && request.resource.data.keys().hasOnly([
+          'hostUid', 'memberUids', 'participants',
+          'declinedUids', 'type', 'status',
+          'createdAt', 'updatedAt'
+        ]);
+
+      allow get, list: if signedIn()
+        && request.auth.uid in resource.data.memberUids;
+
+      allow update: if isGroupMember(roomId)
+        && (
+          (
+            !(request.auth.uid in resource.data.participants)
+            && request.auth.uid in request.resource.data.participants
+            && request.resource.data.participants.size() <= 6
+            && request.resource.data.participants.hasAll(
+              resource.data.participants
+            )
+            && request.resource.data.diff(resource.data)
+              .affectedKeys().hasOnly([
+                'participants', 'status', 'updatedAt'
+              ])
+            && request.resource.data.status in ['active', 'ringing']
+          )
+          ||
+          (
+            request.auth.uid in resource.data.participants
+            && !(request.auth.uid in request.resource.data.participants)
+            && resource.data.participants.hasAll(
+              request.resource.data.participants
+            )
+            && request.resource.data.diff(resource.data)
+              .affectedKeys().hasOnly([
+                'participants', 'updatedAt'
+              ])
+          )
+          ||
+          (
+            !(request.auth.uid in resource.data.participants)
+            && request.auth.uid in request.resource.data.declinedUids
+            && request.resource.data.declinedUids.size() <= 5
+            && request.resource.data.diff(resource.data)
+              .affectedKeys().hasOnly([
+                'declinedUids', 'updatedAt'
+              ])
+          )
+          ||
+          (
+            request.auth.uid == resource.data.hostUid
+            && request.resource.data.status == 'ended'
+            && request.resource.data.diff(resource.data)
+              .affectedKeys().hasOnly([
+                'status', 'updatedAt'
+              ])
+          )
+        );
+
+      allow delete: if false;
+
+      // GROUP CONNECTIONS
+      match /connections/{pairId} {
+
+        allow create: if isGroupMember(roomId)
+          && request.resource.data.callerUid == request.auth.uid
+          && request.resource.data.calleeUid is string
+          && request.resource.data.calleeUid != request.auth.uid
+          && request.resource.data.calleeUid in get(
+            /databases/$(database)/documents/groupCalls/$(roomId)
+          ).data.memberUids
+          && request.resource.data.keys().hasOnly([
+            'callerUid', 'calleeUid', 'createdAt'
+          ]);
+
+        allow get, list: if isGroupPairMember(roomId, pairId);
+
+        allow update: if isGroupPairMember(roomId, pairId)
+          && (
+            (
+              request.auth.uid == resource.data.callerUid
+              && request.resource.data.diff(resource.data)
+                .affectedKeys().hasOnly(['offer'])
+            )
+            ||
+            (
+              request.auth.uid == resource.data.calleeUid
+              && request.resource.data.diff(resource.data)
+                .affectedKeys().hasOnly(['answer'])
+            )
+          );
+
+        allow delete: if false;
+
+        match /callerCandidates/{candidateId} {
+          allow read: if isGroupPairMember(roomId, pairId);
+
+          allow create: if isGroupPairMember(roomId, pairId)
+            && request.auth.uid == get(
+              /databases/$(database)/documents/groupCalls/$(roomId)/connections/$(pairId)
+            ).data.callerUid
+            && request.resource.data.uid == request.auth.uid;
+
+          allow update, delete: if false;
+        }
+
+        match /calleeCandidates/{candidateId} {
+          allow read: if isGroupPairMember(roomId, pairId);
+
+          allow create: if isGroupPairMember(roomId, pairId)
+            && request.auth.uid == get(
+              /databases/$(database)/documents/groupCalls/$(roomId)/connections/$(pairId)
+            ).data.calleeUid
+            && request.resource.data.uid == request.auth.uid;
+
+          allow update, delete: if false;
+        }
+      }
+    }
+  }
+}
