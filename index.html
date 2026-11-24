@@ -226,6 +226,47 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
 }
 
+
+/* RR CHAT SCROLL AND LONG-PRESS FIX */
+#chatPanel{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  height:78vh;
+  min-height:400px;
+  overflow:hidden;
+}
+#chatPanel #messages{
+  flex:1 1 0;
+  min-height:0;
+  height:auto;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  overscroll-behavior:contain;
+}
+#chatPanel #messageComposer,
+#chatPanel #callButtons,
+#chatPanel #incomingBox,
+#chatPanel #activeCallBox,
+#chatPanel #groupCallPanel,
+#chatPanel #groupChatPanel{
+  flex-shrink:0;
+}
+@media(max-width:700px){
+  body.mobile-chat-open #chatPanel{
+    height:calc(100dvh - 100px);
+    min-height:0;
+  }
+  #chatPanel #messages{
+    min-height:0;
+    flex:1 1 0;
+    touch-action:pan-y;
+    -webkit-overflow-scrolling:touch;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1233,29 +1274,64 @@ if(!n)box.textContent="Koi user nahi mila.";
 }
 
 
-async function handleMessageAction(messageId,m){
+
+let selectedMessageForAction=null;
+function ensureMessageActionBar(){
+  let bar=$("messageActionBar");
+  if(bar)return bar;
+  bar=document.createElement("div");
+  bar.id="messageActionBar";
+  bar.style.cssText="display:none;gap:8px;flex-wrap:wrap;padding:9px;background:#202b4b;border-radius:10px;margin:6px 0";
+  const add=(label,fn)=>{
+    let b=document.createElement("button");
+    b.textContent=label;b.className="secondary";b.onclick=fn;bar.appendChild(b);
+  };
+  add("Delete for me",()=>deleteSelectedMessage("me"));
+  add("Delete for everyone",()=>deleteSelectedMessage("everyone"));
+  add("Cancel",()=>{selectedMessageForAction=null;bar.style.display="none";});
+  $("messages").before(bar);
+  return bar;
+}
+function showMessageActions(messageId,m){
+  selectedMessageForAction={id:messageId,data:m,chat:activeChat};
+  let bar=ensureMessageActionBar();
+  bar.children[1].style.display=m.senderId===me.uid&&!m.deletedForEveryone?"":"none";
+  bar.style.display="flex";
+}
+async function deleteSelectedMessage(mode){
+  let selected=selectedMessageForAction;
+  if(!selected)return;
   try{
-    if(m.deletedForEveryone)return;
-    const mine=m.senderId===me.uid;
-    const choice=prompt(
-      mine
-      ? "Message delete karein:\n1 = Delete for me\n2 = Delete for everyone\n0 = Cancel"
-      : "Message delete karein:\n1 = Delete for me\n0 = Cancel"
-    );
-    if(choice==="1"){
-      await updateDoc(doc(db,"chats",activeChat,"messages",messageId),{
-        deletedFor:arrayUnion(me.uid)
-      });
-    }else if(choice==="2"&&mine){
-      if(!confirm("Kya ye message dono taraf se delete karna hai?"))return;
-      await updateDoc(doc(db,"chats",activeChat,"messages",messageId),{
-        deletedForEveryone:true,
-        text:"This message was deleted",
-        deletedAt:serverTimestamp()
-      });
-    }
+    if(mode==="everyone"&&selected.data.senderId!==me.uid)return;
+    if(mode==="everyone"&&!confirm("Kya ye message dono taraf se delete karna hai?"))return;
+    let changes=mode==="me"
+      ?{deletedFor:arrayUnion(me.uid)}
+      :{deletedForEveryone:true,text:"This message was deleted",deletedAt:serverTimestamp()};
+    await updateDoc(doc(db,"chats",selected.chat,"messages",selected.id),changes);
+    selectedMessageForAction=null;
+    $("messageActionBar").style.display="none";
   }catch(e){say("Delete error: "+e.message)}
 }
+function attachLongPress(el,callback){
+  let timer=null,triggered=false;
+  const clear=()=>{if(timer!==null){clearTimeout(timer);timer=null;}};
+  el.addEventListener("contextmenu",e=>{
+    e.preventDefault();
+    if(!triggered){clear();triggered=true;callback();}
+  });
+  el.addEventListener("pointerdown",e=>{
+    if(e.pointerType==="mouse"&&e.button!==0)return;
+    triggered=false;clear();
+    timer=setTimeout(()=>{timer=null;triggered=true;callback();},600);
+  });
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>el.addEventListener(ev,clear));
+  el.addEventListener("click",e=>{
+    if(triggered){
+      e.preventDefault();e.stopImmediatePropagation();triggered=false;
+    }
+  },true);
+}
+
 
 async function openChat(other,name){
   try{
@@ -1301,13 +1377,13 @@ async function openChat(other,name){
           el.appendChild(body);
           el.appendChild(who);
           if(!m.deletedForEveryone){
-            el.style.cursor="pointer";
-            el.title="Tap for message options";
-            el.addEventListener("click",()=>handleMessageAction(d.id,m));
-          }
+                    el.style.cursor="pointer";
+                    el.title="Options ke liye message ko daba kar rakhein";
+                    attachLongPress(el,()=>showMessageActions(d.id,m));
+                  }
           $("messages").appendChild(el);
         });
-        $("messages").scrollTop=$("messages").scrollHeight;
+        requestAnimationFrame(()=>{const box=$("messages");if(box)box.scrollTop=box.scrollHeight;});
       },e=>say(e.message)
     );
   }catch(e){say(e.message)}
@@ -1371,16 +1447,58 @@ async function openGroupChat(groupId,groupName){
           el.appendChild(body);
           el.appendChild(who);
           if(!m.deletedForEveryone){
-            el.style.cursor="pointer";
-            el.title="Tap for message options";
-            el.addEventListener("click",()=>handleMessageAction(d.id,m));
-          }
+                    el.style.cursor="pointer";
+                    el.title="Options ke liye message ko daba kar rakhein";
+                    attachLongPress(el,()=>showMessageActions(d.id,m));
+                  }
           $("messages").appendChild(el);
         });
-        $("messages").scrollTop=$("messages").scrollHeight;
+        requestAnimationFrame(()=>{const box=$("messages");if(box)box.scrollTop=box.scrollHeight;});
       },e=>say(e.message)
     );
   }catch(e){say(e.message)}
+}
+
+
+let selectedChatForDeletion=null;
+function ensureChatSelectionBar(){
+  let bar=$("chatSelectionBar");
+  if(bar)return bar;
+  bar=document.createElement("div");
+  bar.id="chatSelectionBar";
+  bar.style.cssText="display:none;align-items:center;gap:10px;padding:10px;background:#202b4b;border-radius:10px;margin:6px 0";
+  let label=document.createElement("b");
+  label.id="chatSelectionLabel";
+  label.textContent="1 chat selected";
+  let del=document.createElement("button");
+  del.textContent="Delete";del.className="danger";
+  del.onclick=async()=>{
+    if(!selectedChatForDeletion)return;
+    if(!confirm("Ye chat sirf aapki chat list se hide hogi. Continue?"))return;
+    try{
+      await updateDoc(doc(db,"chats",selectedChatForDeletion),{hiddenFor:arrayUnion(me.uid)});
+      selectedChatForDeletion=null;
+      updateChatSelectionBar();
+    }catch(e){say("Chat delete error: "+e.message)}
+  };
+  let cancel=document.createElement("button");
+  cancel.textContent="Cancel";cancel.className="secondary";
+  cancel.onclick=()=>{selectedChatForDeletion=null;updateChatSelectionBar();};
+  bar.append(label,del,cancel);
+  $("chatList").before(bar);
+  return bar;
+}
+function updateChatSelectionBar(){
+  let bar=ensureChatSelectionBar();
+  bar.style.display=selectedChatForDeletion?"flex":"none";
+  document.querySelectorAll("#chatList .user").forEach(row=>{
+    row.style.outline=row.dataset.chatId===selectedChatForDeletion?"2px solid #55b8ff":"";
+    row.style.background=row.dataset.chatId===selectedChatForDeletion?"#26395f":"";
+  });
+}
+function selectChatForDeletion(id){
+  selectedChatForDeletion=id;
+  updateChatSelectionBar();
 }
 
 function loadChats(){
@@ -1452,25 +1570,17 @@ function loadChats(){
         info.appendChild(last);
         el.appendChild(avatar);
         el.appendChild(info);
-        el.onclick=()=>isGroup?openGroupChat(d.id,name):openChat(other,name);
-
-        let del=document.createElement("button");
-        del.className="danger";
-        del.textContent="🗑";
-        del.title="Delete chat for me";
-        del.style.flex="none";
-        del.style.minWidth="42px";
-        del.onclick=async ev=>{
-          ev.stopPropagation();
-          if(!confirm("Ye chat sirf aapki chat list se hide hogi. Continue?"))return;
-          try{
-            await updateDoc(doc(db,"chats",d.id),{
-              hiddenFor:arrayUnion(me.uid)
-            });
-          }catch(e){say("Chat delete error: "+e.message)}
-        };
-        el.appendChild(del);
-        box.appendChild(el);
+        attachLongPress(el,()=>selectChatForDeletion(d.id));
+                     el.onclick=()=>{
+                       if(selectedChatForDeletion){
+                         selectedChatForDeletion=d.id;
+                         updateChatSelectionBar();
+                         return;
+                       }
+                       isGroup?openGroupChat(d.id,name):openChat(other,name);
+                     };
+                     el.dataset.chatId=d.id;
+                     box.appendChild(el);
       }
     },e=>say(e.message)
   );
