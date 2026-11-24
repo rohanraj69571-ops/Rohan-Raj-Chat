@@ -101,6 +101,131 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 #chatList .user:hover{background:#20294b;border-radius:10px}
 
+
+/* RR_WHATSAPP_PREMIUM_V1 */
+#chatPanel {
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  min-height:560px;
+  height:78vh;
+  padding:12px;
+  overflow:hidden;
+  background:#11182f;
+  border:1px solid #303b62;
+}
+#chatPanel #chatTitle {
+  min-height:48px;
+  display:flex;
+  align-items:center;
+  margin:0;
+  padding:8px 10px;
+  border-bottom:1px solid #303b62;
+  font-size:18px;
+  overflow-wrap:anywhere;
+}
+#chatPanel #backToChats {
+  align-self:flex-start;
+  margin:0 0 6px;
+  border-radius:20px;
+}
+#chatPanel #callButtons {
+  display:flex;
+  gap:8px;
+  padding:6px 4px;
+}
+#chatPanel #callButtons button {
+  flex:1;
+  border-radius:22px;
+  min-height:42px;
+}
+#chatPanel #messages {
+  flex:1;
+  min-height:120px;
+  height:auto;
+  margin:8px 0;
+  padding:14px 10px;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  background-color:#0b1226;
+  background-image:radial-gradient(#283253 0.7px,transparent 0.7px);
+  background-size:18px 18px;
+  border:1px solid #263252;
+  border-radius:14px;
+}
+#chatPanel .msg {
+  width:fit-content;
+  max-width:82%;
+  padding:10px 13px;
+  margin:8px 0;
+  border-radius:16px 16px 16px 4px;
+  background:#263452;
+  color:#f5f6ff;
+  line-height:1.45;
+  box-shadow:0 2px 5px #0003;
+}
+#chatPanel .msg.mine {
+  margin-left:auto;
+  border-radius:16px 16px 4px 16px;
+  background:linear-gradient(135deg,#6654d9,#5142b8);
+}
+#chatPanel .msg small {
+  display:block;
+  margin-top:5px;
+  text-align:right;
+  font-size:10px;
+  color:#c6c9e8;
+}
+#messageComposer {
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:center;
+  gap:7px;
+  margin:0;
+  padding:7px;
+  background:#1b2440;
+  border:1px solid #364269;
+  border-radius:28px;
+}
+#messageComposer input#messageInput {
+  flex:1;
+  width:0;
+  min-width:0;
+  margin:0;
+  padding:12px 14px;
+  border:0;
+  border-radius:24px;
+  background:#0d1530;
+}
+#messageComposer #sendBtn {
+  flex:none;
+  min-width:54px;
+  min-height:44px;
+  margin:0;
+  border-radius:50%;
+  background:#765df5;
+}
+@media(max-width:700px) {
+  #chatPanel {
+    height:calc(100dvh - 125px);
+    min-height:420px;
+    padding:9px;
+    margin-bottom:5px;
+    border-radius:14px;
+  }
+  body.mobile-chat-open #chatPanel {
+    height:calc(100dvh - 100px);
+    min-height:360px;
+  }
+  #chatPanel #messages {
+    min-height:100px;
+    padding:12px 8px;
+  }
+  #chatPanel .msg {
+    max-width:88%;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -189,7 +314,7 @@ style="flex:1;width:100%;border-radius:30px;background:#f1f1f1;color:#222;paddin
 <div id="chatList"></div>
 </section>
 
-<section class="panel">
+<section class="panel" id="chatPanel">
 <h2 id="chatTitle">Chat select karein</h2>
 
 <div id="callButtons" class="hidden">
@@ -250,7 +375,7 @@ style="flex:1;width:100%;border-radius:30px;background:#f1f1f1;color:#222;paddin
 <div id="messages">
 <span class="muted">Left side se friend select karein.</span>
 </div>
-<div class="row">
+<div id="messageComposer" class="row">
 <input id="messageInput" placeholder="Message likhein..." maxlength="2000">
 <button id="sendBtn">Send</button>
 </div>
