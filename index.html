@@ -267,6 +267,90 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
 }
 
+
+/* FINAL MOBILE CHAT SCROLL FIX */
+html, body {
+  height: 100%;
+}
+#app {
+  min-height: 0;
+}
+#chatPanel {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+#chatPanel > #messages {
+  display: block !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  max-height: none !important;
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  overscroll-behavior-y: contain;
+}
+#chatPanel > #messageComposer {
+  flex: 0 0 auto !important;
+}
+@media (max-width: 700px) {
+  body.mobile-chat-open #chatPanel {
+    height: calc(100dvh - 90px) !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 90px) !important;
+  }
+  #chatPanel > #messages {
+    height: 0 !important;
+    min-height: 0 !important;
+    flex: 1 1 auto !important;
+    overflow-y: scroll !important;
+    touch-action: pan-y !important;
+  }
+}
+
+
+/* RR FINAL TOUCH SCROLL OVERRIDE */
+#chatPanel {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+#chatPanel > #messages {
+  box-sizing: border-box !important;
+  display: block !important;
+  flex: 1 1 0% !important;
+  height: 1px !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  overscroll-behavior-y: contain !important;
+  pointer-events: auto !important;
+}
+#chatPanel > #messageComposer {
+  flex: 0 0 auto !important;
+}
+@media (max-width: 700px) {
+  body.mobile-chat-open #chatPanel {
+    height: calc(100dvh - 110px) !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 110px) !important;
+  }
+  body.mobile-chat-open #chatPanel > #messages {
+    flex: 1 1 0% !important;
+    height: 1px !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    touch-action: pan-y !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1383,7 +1467,13 @@ async function openChat(other,name){
                   }
           $("messages").appendChild(el);
         });
-        requestAnimationFrame(()=>{const box=$("messages");if(box)box.scrollTop=box.scrollHeight;});
+        requestAnimationFrame(()=>{
+          const box=$("messages");
+          if(box){
+            const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
+            if(nearBottom || box.scrollTop === 0) box.scrollTop = box.scrollHeight;
+          }
+        });
       },e=>say(e.message)
     );
   }catch(e){say(e.message)}
@@ -1453,7 +1543,13 @@ async function openGroupChat(groupId,groupName){
                   }
           $("messages").appendChild(el);
         });
-        requestAnimationFrame(()=>{const box=$("messages");if(box)box.scrollTop=box.scrollHeight;});
+        requestAnimationFrame(()=>{
+          const box=$("messages");
+          if(box){
+            const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
+            if(nearBottom || box.scrollTop === 0) box.scrollTop = box.scrollHeight;
+          }
+        });
       },e=>say(e.message)
     );
   }catch(e){say(e.message)}
