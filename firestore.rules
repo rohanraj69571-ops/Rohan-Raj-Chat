@@ -141,16 +141,56 @@ service cloud.firestore {
 
         allow create: if isChatMember(chatId)
           && request.resource.data.senderId == request.auth.uid
-          && request.resource.data.keys().hasOnly([
-            'senderId', 'senderName', 'text', 'createdAt',
-            'deletedFor', 'deletedForEveryone'
-          ])
-          && request.resource.data.text is string
-          && request.resource.data.text.size() <= 2000
           && request.resource.data.senderName is string
           && request.resource.data.senderName.size() <= 60
           && request.resource.data.get('deletedFor', []) == []
-          && request.resource.data.get('deletedForEveryone', false) == false;
+          && request.resource.data.get('deletedForEveryone', false) == false
+          && (
+            (
+              !('type' in request.resource.data)
+              && request.resource.data.keys().hasOnly([
+                'senderId', 'senderName', 'text', 'createdAt',
+                'deletedFor', 'deletedForEveryone'
+              ])
+              && request.resource.data.text is string
+              && request.resource.data.text.size() <= 2000
+            )
+            ||
+            (
+              request.resource.data.type == 'media'
+              && request.resource.data.keys().hasOnly([
+                'senderId', 'senderName', 'text', 'createdAt',
+                'deletedFor', 'deletedForEveryone', 'type',
+                'mediaUrl', 'mediaName', 'mediaMime', 'mediaSize',
+                'mediaType', 'mediaResourceType', 'duration'
+              ])
+              && request.resource.data.text is string
+              && request.resource.data.text.size() <= 2000
+              && request.resource.data.mediaUrl is string
+              && request.resource.data.mediaUrl.matches('https://res\\.cloudinary\\.com/ru07pyqt/(image|video|raw)/upload/.*')
+              && request.resource.data.mediaName is string
+              && request.resource.data.mediaName.size() <= 200
+              && request.resource.data.mediaMime is string
+              && request.resource.data.mediaMime.size() <= 120
+              && request.resource.data.mediaSize is int
+              && request.resource.data.mediaSize > 0
+              && request.resource.data.mediaType in ['image', 'video', 'audio', 'file']
+              && request.resource.data.mediaResourceType in ['image', 'video', 'raw']
+              && (
+                (request.resource.data.mediaType == 'video'
+                  && request.resource.data.mediaSize <= 52428800)
+                ||
+                (request.resource.data.mediaType != 'video'
+                  && request.resource.data.mediaSize <= 10485760)
+              )
+              && (
+                !('duration' in request.resource.data)
+                || (request.resource.data.duration is number
+                    && request.resource.data.duration >= 0
+                    && request.resource.data.duration <= 3600)
+              )
+            )
+          );
 
         // Delete for me: only add the current user's UID.
         // Delete for everyone: only the original sender.

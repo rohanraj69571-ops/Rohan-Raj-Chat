@@ -342,6 +342,23 @@ html, body {
   }
 }
 
+
+/* CLOUDINARY_MEDIA_UPDATE */
+.media-toolbar{display:flex;gap:8px;align-items:center;margin:8px 0}
+.media-toolbar button{min-width:44px;min-height:40px;border-radius:20px;background:#29365d;color:white}
+.voice-preview{padding:10px;background:#1b2440;border:1px solid #46558a;border-radius:14px;margin:8px 0}
+.voice-preview button{margin:4px}
+.media-item{display:block;max-width:min(260px,70vw);max-height:300px;border-radius:12px;margin:6px 0;object-fit:contain}
+.media-item video{width:100%;max-height:300px;border-radius:12px}
+.media-item audio{width:100%;max-width:260px}
+.media-file-link{display:inline-block;padding:10px;background:#29365d;color:white;border-radius:10px;margin:6px 0;overflow-wrap:anywhere}
+.media-viewer{position:fixed;inset:0;background:#050817f5;z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px}
+.media-viewer.hidden{display:none}
+.media-viewer #closeMediaViewer{position:absolute;right:18px;top:18px;z-index:2;font-size:24px}
+#mediaViewerContent{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+#mediaViewerContent img,#mediaViewerContent video{max-width:100%;max-height:90vh;object-fit:contain}
+#mediaViewerContent video{width:100%}
+
 </style>
 </head>
 <body>
@@ -491,9 +508,30 @@ style="flex:1;width:100%;border-radius:30px;background:#f1f1f1;color:#222;paddin
 <div id="messages">
 <span class="muted">Left side se friend select karein.</span>
 </div>
+<div id="mediaToolbar" class="media-toolbar">
+<button type="button" id="cameraMediaBtn">📷</button>
+<button type="button" id="galleryMediaBtn">🖼️</button>
+<button type="button" id="attachMediaBtn">📎</button>
+<button type="button" id="voiceMediaBtn">🎙️ Voice</button>
+</div>
+<input id="cameraMediaInput" type="file" accept="image/*" capture="environment" hidden>
+<input id="galleryMediaInput" type="file" accept="image/*,video/*" hidden>
+<input id="attachMediaInput" type="file" accept="*/*" hidden>
+<div id="voicePreviewBox" class="voice-preview hidden">
+<span id="voiceStatus">Recording voice note...</span>
+<button type="button" id="pauseVoiceBtn">⏸ Pause</button>
+<button type="button" id="stopVoiceBtn">⏹ Stop</button>
+<button type="button" id="sendVoiceBtn" disabled>Send voice</button>
+<button type="button" id="cancelVoiceBtn">✖ Cancel</button>
+<audio id="voicePreviewAudio" controls class="hidden"></audio>
+</div>
 <div id="messageComposer" class="row">
 <input id="messageInput" placeholder="Message likhein..." maxlength="2000">
 <button id="sendBtn">Send</button>
+</div>
+<div id="mediaViewer" class="media-viewer hidden">
+<button type="button" id="closeMediaViewer">✕</button>
+<div id="mediaViewerContent"></div>
 </div>
 </section>
 </div>
@@ -793,6 +831,28 @@ listenForGroupCalls();
 };
 $("searchBtn").onclick=searchFriends;
 $("sendBtn").onclick=sendMessage;
+rrChooseFile($("cameraMediaInput"));
+rrChooseFile($("galleryMediaInput"));
+rrChooseFile($("attachMediaInput"));
+$("cameraMediaBtn").onclick=()=>$("cameraMediaInput").click();
+$("galleryMediaBtn").onclick=()=>$("galleryMediaInput").click();
+$("attachMediaBtn").onclick=()=>$("attachMediaInput").click();
+$("voiceMediaBtn").onclick=rrStartVoice;
+$("pauseVoiceBtn").onclick=()=>{
+  if(!rrRecorder)return;
+  if(rrRecorder.state==="recording"){rrRecorder.pause();$("pauseVoiceBtn").textContent="▶ Resume";$("voiceStatus").textContent="Paused";}
+  else if(rrRecorder.state==="paused"){rrRecorder.resume();$("pauseVoiceBtn").textContent="⏸ Pause";$("voiceStatus").textContent="Recording...";}
+};
+$("stopVoiceBtn").onclick=rrStopVoice;
+$("sendVoiceBtn").onclick=rrSendVoice;
+$("cancelVoiceBtn").onclick=rrCancelVoice;
+$("closeMediaViewer").onclick=()=>{
+  const v=$("mediaViewerContent").querySelector("video");
+  if(v)v.pause();
+  $("mediaViewer").classList.add("hidden");
+  $("mediaViewerContent").replaceChildren();
+};
+
 $("createGroupChatBtn").onclick=createGroupChat;
 $("closeGroupChatBtn").onclick=()=>$("groupChatPanel").classList.add("hidden");
 $("groupFriendSearch").addEventListener("input",showGroupChatFriends);
@@ -1452,6 +1512,167 @@ function attachLongPress(el,callback){
 }
 
 
+
+// CLOUDINARY_MEDIA_UPDATE
+const RR_CLOUD_NAME = "ru07pyqt";
+const RR_UPLOAD_PRESET = "rohan_raj_chat";
+let rrRecorder = null, rrVoiceChunks = [], rrVoiceBlob = null, rrVoiceStream = null;
+let rrRecordingPaused = false;
+
+function rrMediaKind(file) {
+  if (file.type.startsWith("image/")) return "image";
+  if (file.type.startsWith("video/")) return "video";
+  if (file.type.startsWith("audio/")) return "audio";
+  return "file";
+}
+function rrMaxSize(kind) {
+  return kind === "video" ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+}
+function rrShowViewer(url, kind) {
+  const box = $("mediaViewerContent");
+  box.replaceChildren();
+  let el;
+  if (kind === "video") {
+    el = document.createElement("video");
+    el.controls = true; el.autoplay = true; el.playsInline = true;
+  } else {
+    el = document.createElement("img");
+    el.alt = "Photo";
+  }
+  el.src = url;
+  box.appendChild(el);
+  $("mediaViewer").classList.remove("hidden");
+}
+function rrRenderMedia(m, parent) {
+  if (!m.mediaUrl || m.deletedForEveryone) return;
+  const wrap = document.createElement("div");
+  wrap.className = "media-item";
+  const kind = m.mediaType || "file";
+  if (kind === "image") {
+    const img = document.createElement("img");
+    img.src = m.mediaUrl; img.alt = m.mediaName || "Photo";
+    img.className = "media-item"; img.loading = "lazy";
+    img.addEventListener("click", () => rrShowViewer(m.mediaUrl, "image"));
+    wrap.appendChild(img);
+  } else if (kind === "video") {
+    const v = document.createElement("video");
+    v.src = m.mediaUrl; v.controls = true; v.playsInline = true;
+    v.preload = "metadata";
+    v.addEventListener("click", () => { if (v.requestFullscreen) v.requestFullscreen(); });
+    wrap.appendChild(v);
+  } else if (kind === "audio") {
+    const a = document.createElement("audio");
+    a.src = m.mediaUrl; a.controls = true; a.preload = "metadata";
+    wrap.appendChild(a);
+  } else {
+    const link = document.createElement("a");
+    link.href = m.mediaUrl; link.target = "_blank"; link.rel = "noopener";
+    link.className = "media-file-link";
+    link.textContent = "📄 " + (m.mediaName || "Open document");
+    wrap.appendChild(link);
+  }
+  parent.appendChild(wrap);
+}
+async function rrUploadAndSend(file, duration) {
+  if (!activeChat) { alert("Pehle chat select karein."); return; }
+  const kind = rrMediaKind(file);
+  if (file.size > rrMaxSize(kind)) {
+    alert(kind === "video" ? "Video maximum 50 MB ho sakta hai." : "File maximum 10 MB ho sakti hai.");
+    return;
+  }
+  if (!confirm("Ye file bhejni hai?\n" + file.name + "\n" + (file.size/1024/1024).toFixed(2) + " MB")) return;
+  try {
+    say("Media upload ho raha hai...");
+    const form = new FormData();
+    form.append("file", file);
+    form.append("upload_preset", RR_UPLOAD_PRESET);
+    const response = await fetch("https://api.cloudinary.com/v1_1/" + RR_CLOUD_NAME + "/auto/upload", {
+      method: "POST", body: form
+    });
+    const result = await response.json();
+    if (!response.ok || !result.secure_url) throw new Error(result.error?.message || "Cloudinary upload failed");
+    const mediaType = kind;
+    const message = {
+      senderId: me.uid,
+      senderName: $("myName").value.trim() || "Member",
+      text: "",
+      createdAt: serverTimestamp(),
+      deletedFor: [],
+      deletedForEveryone: false,
+      type: "media",
+      mediaUrl: result.secure_url,
+      mediaName: file.name || "Voice note",
+      mediaMime: file.type || "application/octet-stream",
+      mediaSize: file.size,
+      mediaType,
+      mediaResourceType: result.resource_type || "raw"
+    };
+    if (duration) message.duration = Math.round(duration);
+    await addDoc(collection(db, "chats", activeChat, "messages"), message);
+    await setDoc(doc(db, "chats", activeChat), {
+      lastMessage: mediaType === "image" ? "📷 Photo" : mediaType === "video" ? "🎥 Video" : mediaType === "audio" ? "🎙️ Voice message" : "📎 " + (file.name || "File"),
+      updatedAt: serverTimestamp()
+    }, {merge:true});
+    say("Media bhej diya gaya.");
+  } catch (e) {
+    say("Media error: " + e.message);
+  }
+}
+function rrChooseFile(input) {
+  input.onchange = async () => {
+    const file = input.files && input.files[0];
+    if (file) await rrUploadAndSend(file);
+    input.value = "";
+  };
+}
+async function rrStartVoice() {
+  if (!activeChat) { alert("Pehle chat select karein."); return; }
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    alert("Is device/browser mein voice recording supported nahi hai."); return;
+  }
+  try {
+    rrVoiceStream = await navigator.mediaDevices.getUserMedia({audio:true});
+    rrVoiceChunks = [];
+    rrRecorder = new MediaRecorder(rrVoiceStream);
+    rrRecorder.ondataavailable = e => { if (e.data.size) rrVoiceChunks.push(e.data); };
+    rrRecorder.onstop = () => {
+      rrVoiceBlob = new Blob(rrVoiceChunks, {type: rrRecorder.mimeType || "audio/webm"});
+      $("voicePreviewAudio").src = URL.createObjectURL(rrVoiceBlob);
+      $("voicePreviewAudio").classList.remove("hidden");
+      $("voiceStatus").textContent = "Preview sun kar Send voice dabayein.";
+      $("sendVoiceBtn").disabled = false;
+      if (rrVoiceStream) rrVoiceStream.getTracks().forEach(t=>t.stop());
+      rrVoiceStream = null;
+    };
+    rrRecorder.start();
+    $("voicePreviewBox").classList.remove("hidden");
+    $("voiceStatus").textContent = "Recording...";
+    $("voiceMediaBtn").disabled = true;
+  } catch(e) { alert("Microphone error: " + e.message); }
+}
+async function rrStopVoice() {
+  if (rrRecorder && rrRecorder.state !== "inactive") rrRecorder.stop();
+  $("voiceMediaBtn").disabled = false;
+}
+async function rrSendVoice() {
+  if (!rrVoiceBlob) return;
+  const ext = rrVoiceBlob.type.includes("mp4") ? "m4a" : "webm";
+  const file = new File([rrVoiceBlob], "voice-note." + ext, {type:rrVoiceBlob.type});
+  await rrUploadAndSend(file);
+  rrCancelVoice();
+}
+function rrCancelVoice() {
+  if (rrRecorder && rrRecorder.state !== "inactive") rrRecorder.stop();
+  if (rrVoiceStream) rrVoiceStream.getTracks().forEach(t=>t.stop());
+  rrVoiceStream = null; rrVoiceBlob = null; rrVoiceChunks = [];
+  $("voicePreviewAudio").pause();
+  $("voicePreviewAudio").removeAttribute("src");
+  $("voicePreviewAudio").classList.add("hidden");
+  $("voicePreviewBox").classList.add("hidden");
+  $("voiceMediaBtn").disabled = false;
+  $("sendVoiceBtn").disabled = true;
+}
+
 async function openChat(other,name){
   try{
     let id=cid(me.uid,other);
@@ -1483,6 +1704,7 @@ async function openChat(other,name){
           let who=document.createElement("small");
           who.textContent=m.deletedForEveryone?"Deleted":(m.senderId===me.uid?"You":"Friend");
           el.appendChild(body);
+          rrRenderMedia(m, el);
           el.appendChild(who);
           if(!m.deletedForEveryone){
                     el.style.cursor="pointer";
@@ -1548,6 +1770,7 @@ async function openGroupChat(groupId,groupName){
           let who=document.createElement("small");
           who.textContent=m.deletedForEveryone?"Deleted":(m.senderId===me.uid?"You":(m.senderName||"Member"));
           el.appendChild(body);
+          rrRenderMedia(m, el);
           el.appendChild(who);
           if(!m.deletedForEveryone){
                     el.style.cursor="pointer";
