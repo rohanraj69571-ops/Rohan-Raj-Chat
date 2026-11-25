@@ -71,10 +71,6 @@ body.mobile-list-open #app .columns>section:first-child{display:block}
 body.mobile-list-open #app .columns>section:last-child{display:none}
 }
 
-#backToChats{display:none}
-@media(max-width:700px){
-#backToChats{display:inline-block}
-}
 
 /* WhatsApp style friend list */
 #chatList .user{
@@ -123,11 +119,6 @@ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   border-bottom:1px solid #303b62;
   font-size:18px;
   overflow-wrap:anywhere;
-}
-#chatPanel #backToChats {
-  align-self:flex-start;
-  margin:0 0 6px;
-  border-radius:20px;
 }
 #chatPanel #callButtons {
   display:flex;
@@ -512,6 +503,7 @@ style="flex:1;width:100%;border-radius:30px;background:#f1f1f1;color:#222;paddin
 
 <script type="module">
 import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import{initializeApp}from"firebase/app";
 import{
@@ -543,7 +535,50 @@ messagingSenderId:"565941235946",
 appId:"1:565941235946:web:295176ef9255e085006793"
 };
 
+
 const CallBackground = Capacitor.registerPlugin("CallBackground");
+
+CapacitorApp.addListener("backButton", async () => {
+  const menu = document.getElementById("topMenu");
+  if (menu && !menu.classList.contains("hidden")) {
+    menu.classList.add("hidden");
+    return;
+  }
+
+  const profile = document.getElementById("profilePanel");
+  const profileClose = document.getElementById("profileClose");
+  if (profile && !profile.classList.contains("hidden") &&
+      profileClose && !profileClose.classList.contains("hidden")) {
+    profile.classList.add("hidden");
+    document.body.classList.remove("mobile-chat-open");
+    document.body.classList.add("mobile-list-open");
+    return;
+  }
+
+  const panels = ["groupChatPanel", "groupCallPanel"];
+  for (const id of panels) {
+    const panel = document.getElementById(id);
+    if (panel && !panel.classList.contains("hidden")) {
+      panel.classList.add("hidden");
+      document.body.classList.remove("mobile-chat-open");
+      document.body.classList.add("mobile-list-open");
+      return;
+    }
+  }
+
+  if (typeof me !== "undefined" && me) {
+    if (document.body.classList.contains("mobile-chat-open")) {
+      document.body.classList.remove("mobile-chat-open");
+      document.body.classList.add("mobile-list-open");
+      return;
+    }
+
+    if (profile && !profile.classList.contains("hidden")) return;
+  }
+
+  await CapacitorApp.exitApp();
+});
+
 const app=initializeApp(config);
 const auth=Capacitor.isNativePlatform()?initializeAuth(app,{persistence:indexedDBLocalPersistence}):getAuth(app);
 const db=getFirestore(app);
@@ -1428,17 +1463,6 @@ async function openChat(other,name){
     activeChat=id;
     activeFriend={uid:other,name};
     activeChatMode="private";
-    if(!$("backToChats")){
-      const back=document.createElement("button");
-      back.id="backToChats";
-      back.className="secondary";
-      back.textContent="← Chats";
-      back.onclick=()=>{
-        document.body.classList.remove("mobile-chat-open");
-        document.body.classList.add("mobile-list-open");
-      };
-      $("chatTitle").before(back);
-    }
     document.body.classList.add("mobile-chat-open");
     document.body.classList.remove("mobile-list-open");
     $("chatTitle").textContent=name;
@@ -1504,17 +1528,6 @@ async function openGroupChat(groupId,groupName){
     activeChat=groupId;
     activeFriend=null;
     activeChatMode="group";
-    if(!$("backToChats")){
-      const back=document.createElement("button");
-      back.id="backToChats";
-      back.className="secondary";
-      back.textContent="← Chats";
-      back.onclick=()=>{
-        document.body.classList.remove("mobile-chat-open");
-        document.body.classList.add("mobile-list-open");
-      };
-      $("chatTitle").before(back);
-    }
     document.body.classList.add("mobile-chat-open");
     document.body.classList.remove("mobile-list-open");
     $("chatTitle").textContent="👥 "+groupName;
